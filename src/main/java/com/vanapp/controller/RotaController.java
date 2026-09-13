@@ -15,8 +15,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.vanapp.model.Endereco;
 import com.vanapp.model.Presenca;
 import com.vanapp.model.Usuario;
+import com.vanapp.repository.EnderecoRepository;
 import com.vanapp.repository.PresencaRepository;
 import com.vanapp.repository.UsuarioRepository;
 import com.vanapp.service.RotaService;
@@ -33,15 +35,20 @@ public class RotaController {
 
     private final PresencaRepository presencaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final EnderecoRepository enderecoRepository;
     private final RotaService rotaService;
     private final ViagemService viagemService;
 
-    public RotaController(PresencaRepository presencaRepository, 
-                          UsuarioRepository usuarioRepository, 
-                          RotaService rotaService, 
-                          ViagemService viagemService) {
+    public RotaController(
+            PresencaRepository presencaRepository, 
+            UsuarioRepository usuarioRepository, 
+            EnderecoRepository enderecoRepository,
+            RotaService rotaService, 
+            ViagemService viagemService
+    ) {
         this.presencaRepository = presencaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.enderecoRepository = enderecoRepository;
         this.rotaService = rotaService;
         this.viagemService = viagemService;
     }
@@ -88,10 +95,14 @@ public class RotaController {
         return ResponseEntity.ok(viagemService.verificarStatusAtual());
     }
 
-    @Operation(summary = "Confirmar/Atualizar Presença", description = "Marca a presença do passageiro para o dia atual ou limpa o registro.")
+    @Operation(summary = "Confirmar/Atualizar Presença", description = "Marca a presença e o endereço específico do passageiro para o dia atual ou limpa o registro.")
     @PostMapping("/confirmar")
     @Transactional
-    public ResponseEntity<String> confirmarPresenca(@RequestParam Long usuarioId, @RequestParam String status) {
+    public ResponseEntity<String> confirmarPresenca(
+            @RequestParam Long usuarioId, 
+            @RequestParam String status,
+            @RequestParam(required = false) Long enderecoId
+    ) {
         if (usuarioId == null) return ResponseEntity.badRequest().body("usuarioId não pode ser nulo");
 
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
@@ -108,12 +119,21 @@ public class RotaController {
                 p.setData(hoje);
             }
             p.setStatus(status);
+
+            if (enderecoId != null) {
+                Endereco endereco = enderecoRepository.findById(enderecoId)
+                        .orElseThrow(() -> new RuntimeException("Endereço não encontrado"));
+                p.setEndereco(endereco);
+            } else {
+                p.setEndereco(null);
+            }
+
             presencaRepository.save(p);
         }
         return ResponseEntity.ok("SUCESSO");
     }
 
-    @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas.")
+    @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas com os endereços do dia.")
     @GetMapping("/otimizar")
     public ResponseEntity<?> otimizarRota(@RequestParam String sentido) {
         try {

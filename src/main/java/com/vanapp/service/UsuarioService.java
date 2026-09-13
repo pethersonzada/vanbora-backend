@@ -14,13 +14,11 @@ import com.vanapp.repository.ViagemRepository;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
-    private final GeocodingService geocodingService;
     private final PresencaRepository presencaRepository;
     private final ViagemRepository viagemRepository;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, GeocodingService geocodingService, PresencaRepository presencaRepository, ViagemRepository viagemRepository) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PresencaRepository presencaRepository, ViagemRepository viagemRepository) {
         this.usuarioRepository = usuarioRepository;
-        this.geocodingService = geocodingService;
         this.presencaRepository = presencaRepository;
         this.viagemRepository = viagemRepository;
     }
@@ -32,10 +30,6 @@ public class UsuarioService {
         if (usuarioRepository.findByTelefone(usuario.getTelefone()).isPresent()) {
             throw new RuntimeException("Telefone já cadastrado");
         }
-        
-        double[] coordenadas = geocodingService.geocodificarEndereco(usuario.getEnderecoCompleto());
-        usuario.setLatitude(coordenadas[0]);
-        usuario.setLongitude(coordenadas[1]);
         
         return usuarioRepository.save(usuario);
     }

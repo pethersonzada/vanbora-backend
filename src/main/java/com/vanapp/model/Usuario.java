@@ -1,8 +1,6 @@
 package com.vanapp.model;
 
-import java.util.List;
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "usuarios")
@@ -33,10 +31,6 @@ public class Usuario {
     private Double latitude;
     private Double longitude;
 
-    @ManyToMany(mappedBy = "alunos")
-    @JsonIgnore
-    private List<Turma> turmas;
-
     public Usuario() {}
 
     public Long getId() { return id; }
@@ -57,6 +51,4 @@ public class Usuario {
     public void setLatitude(Double latitude) { this.latitude = latitude; }
     public Double getLongitude() { return longitude; }
     public void setLongitude(Double longitude) { this.longitude = longitude; }
-    public List<Turma> getTurmas() { return turmas; }
-    public void setTurmas(List<Turma> turmas) { this.turmas = turmas; }
 }

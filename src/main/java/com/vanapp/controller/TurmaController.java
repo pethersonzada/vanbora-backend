@@ -47,7 +47,7 @@ public class TurmaController {
         return ResponseEntity.ok(turmas);
     }
 
-    @Operation(summary = "Listar Passageiros da Turma", description = "Retorna os passageiros vinculados a uma turma junto com o status de presença do dia.")
+    @Operation(summary = "Listar Passageiros da Turma", description = "Retorna os passageiros vinculados a uma turma junto com o status de presença e o endereço correto do dia.")
     @GetMapping("/{turmaId}/passageiros")
     public ResponseEntity<List<Map<String, Object>>> listarPassageirosDaTurma(@PathVariable Long turmaId) {
         List<Usuario> passageiros = turmaService.listarPassageirosPorTurma(turmaId);
@@ -56,11 +56,17 @@ public class TurmaController {
         List<Map<String, Object>> resultado = passageiros.stream().map(aluno -> {
             Presenca presenca = presencaRepository.findByUsuarioIdAndData(aluno.getId(), hoje);
             
+            String enderecoFinal = aluno.getEnderecoCompleto();
+            if (presenca != null && presenca.getEndereco() != null) {
+                var end = presenca.getEndereco();
+                enderecoFinal = end.getRua() + ", " + end.getNumero() + " - " + end.getBairro();
+            }
+            
             Map<String, Object> map = new java.util.HashMap<>();
             map.put("id", aluno.getId());
             map.put("nome", aluno.getNome());
             map.put("telefone", aluno.getTelefone());
-            map.put("enderecoCompleto", aluno.getEnderecoCompleto());
+            map.put("enderecoCompleto", enderecoFinal);
             map.put("status", presenca != null ? presenca.getStatus() : null);
             return map;
         }).collect(Collectors.toList());
@@ -115,4 +121,57 @@ public class TurmaController {
         }
     }
 
+    @Operation(summary = "Solicitar Entrada na Turma", description = "Permite ao aluno solicitar entrada em uma turma usando o código de convite.")
+    @PostMapping("/entrar/{alunoId}")
+    public ResponseEntity<?> solicitarEntradaTurma(@PathVariable Long alunoId, @RequestParam String codigo) {
+        try {
+            turmaService.solicitarEntradaPorCodigo(alunoId, codigo);
+            return ResponseEntity.ok("Solicitação enviada com sucesso! Aguarde a aprovação do motorista.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Listar Alunos Pendentes", description = "Retorna os alunos que solicitaram entrada mas ainda não foram aprovados.")
+    @GetMapping("/{turmaId}/pendentes")
+    public ResponseEntity<?> listarAlunosPendentes(@PathVariable Long turmaId) {
+        try {
+            return ResponseEntity.ok(turmaService.listarAlunosPorStatus(turmaId, "PENDENTE"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Aprovar ou Rejeitar Aluno", description = "Permite ao motorista aceitar ou recusar a solicitação de entrada do aluno.")
+    @PutMapping("/analisar/{vinculoId}")
+    public ResponseEntity<?> analisarSolicitacaoAluno(@PathVariable Long vinculoId, @RequestParam String status) {
+        try {
+            turmaService.analisarSolicitacao(vinculoId, status.toUpperCase());
+            return ResponseEntity.ok("Status atualizado com sucesso.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Regenerar Código de Convite", description = "Gera um novo código de convite para a turma sem perder os dados ou vínculos.")
+    @PutMapping("/{turmaId}/regenerar-codigo")
+    public ResponseEntity<?> regenerarCodigoConvite(@PathVariable Long turmaId) {
+        try {
+            Turma turmaAtualizada = turmaService.regenerarCodigoConvite(turmaId);
+            return ResponseEntity.ok(turmaAtualizada);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Excluir Turma", description = "Remove uma turma e seus vínculos do sistema.")
+    @DeleteMapping("/{turmaId}")
+    public ResponseEntity<?> excluirTurma(@PathVariable Long turmaId) {
+        try {
+            turmaService.deletarTurma(turmaId);
+            return ResponseEntity.ok("Turma excluída com sucesso.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
