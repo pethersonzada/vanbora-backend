@@ -98,10 +98,10 @@ public class UsuarioController {
     @PostMapping("/cadastrar")
     public ResponseEntity<?> cadastrar(@RequestBody Usuario novoUsuario) {
         try {
-            if (usuarioRepository.findByEmail(novoUsuario.getEmail()).isPresent()) {
-                return ResponseEntity.status(400).body(Map.of("message", "E-mail já cadastrado"));
-            }
-            return ResponseEntity.ok(usuarioRepository.save(novoUsuario));
+            Usuario usuarioSalvo = usuarioService.cadastrarUsuario(novoUsuario);
+            return ResponseEntity.ok(usuarioSalvo);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("message", e.getMessage()));
