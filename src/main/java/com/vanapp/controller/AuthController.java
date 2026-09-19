@@ -32,7 +32,7 @@ public class AuthController {
         this.usuarioRepository = usuarioRepository;
     }
 
-    @Operation(summary = "Login/Sincronização com Firebase", description = "Valida o token JWT do Firebase, identifica o utilizador pelo CPF e retorna os dados de perfil.")
+    @Operation(summary = "Login/Sincronização com Firebase", description = "Valida o token JWT do Firebase, identifica o utilizador pelo E-mail e retorna os dados de perfil.")
     @PostMapping("/login")
     public ResponseEntity<Object> login(
             @RequestHeader("Authorization") String authHeader,
@@ -42,9 +42,9 @@ public class AuthController {
             return ResponseEntity.status(401).body("Token de autenticação ausente ou mal formatado.");
         }
 
-        String cpf = payload.get("cpf");
-        if (cpf == null || cpf.isBlank()) {
-            return ResponseEntity.badRequest().body("O CPF é obrigatório para vincular o utilizador.");
+        String email = payload.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body("O E-mail é obrigatório para vincular o utilizador.");
         }
 
         try {
@@ -52,10 +52,10 @@ public class AuthController {
             FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
             String uid = decodedToken.getUid();
 
-            Optional<Usuario> usuarioOpt = usuarioRepository.findByCpf(cpf);
+            Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(email);
 
             if (usuarioOpt.isEmpty()) {
-                return ResponseEntity.status(404).body("Utilizador não encontrado com este CPF.");
+                return ResponseEntity.status(404).body("Utilizador não encontrado com este e-mail.");
             }
 
             Usuario u = usuarioOpt.get();

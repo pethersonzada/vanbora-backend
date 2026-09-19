@@ -86,11 +86,11 @@ public class UsuarioController {
                 .orElse(ResponseEntity.status(404).build());
     }
 
-    @Operation(summary = "Cadastrar Usuário", description = "Cria um novo registro. Impede cadastro com CPF duplicado.")
+    @Operation(summary = "Cadastrar Usuário", description = "Cria um novo registro. Impede cadastro com E-mail duplicado.")
     @PostMapping("/cadastrar")
     public ResponseEntity<?> cadastrar(@RequestBody Usuario novoUsuario) {
-        if (usuarioRepository.findByCpf(novoUsuario.getCpf()).isPresent()) {
-            return ResponseEntity.status(400).body("Erro: CPF já cadastrado");
+        if (usuarioRepository.findByEmail(novoUsuario.getEmail()).isPresent()) {
+            return ResponseEntity.status(400).body("Erro: E-mail já cadastrado");
         }
         return ResponseEntity.ok(usuarioRepository.save(novoUsuario));
     }

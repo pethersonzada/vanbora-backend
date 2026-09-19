@@ -25,8 +25,8 @@ public class UsuarioService {
     }
 
     public Usuario cadastrarUsuario(Usuario usuario) {
-        if (usuarioRepository.findByCpf(usuario.getCpf()).isPresent()) {
-            throw new RuntimeException("CPF já cadastrado");
+        if (usuarioRepository.findByEmail(usuario.getEmail()).isPresent()) {
+            throw new RuntimeException("E-mail já cadastrado");
         }
         if (usuarioRepository.findByTelefone(usuario.getTelefone()).isPresent()) {
             throw new RuntimeException("Telefone já cadastrado");
