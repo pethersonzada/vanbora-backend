@@ -86,13 +86,18 @@ public class UsuarioController {
                 .orElse(ResponseEntity.status(404).build());
     }
 
-    @Operation(summary = "Cadastrar Usuário", description = "Cria um novo registro. Impede cadastro com E-mail duplicado.")
+    @Operation(summary = "Cadastrar Usuário", description = "Cria um novo registro.")
     @PostMapping("/cadastrar")
     public ResponseEntity<?> cadastrar(@RequestBody Usuario novoUsuario) {
-        if (usuarioRepository.findByEmail(novoUsuario.getEmail()).isPresent()) {
-            return ResponseEntity.status(400).body("Erro: E-mail já cadastrado");
+        try {
+            if (usuarioRepository.findByEmail(novoUsuario.getEmail()).isPresent()) {
+                return ResponseEntity.status(400).body(Map.of("message", "E-mail já cadastrado"));
+            }
+            return ResponseEntity.ok(usuarioRepository.save(novoUsuario));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("message", e.getMessage()));
         }
-        return ResponseEntity.ok(usuarioRepository.save(novoUsuario));
     }
 
     @Operation(summary = "Atualizar Endereço", description = "Atualiza latitude, longitude e endereço completo do passageiro.")
