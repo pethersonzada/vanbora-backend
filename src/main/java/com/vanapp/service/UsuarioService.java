@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.google.firebase.auth.FirebaseAuth;
 import com.vanapp.model.Usuario;
 import com.vanapp.repository.PresencaRepository;
 import com.vanapp.repository.UsuarioRepository;
@@ -59,6 +60,14 @@ public class UsuarioService {
                 throw new RuntimeException("Não é possível excluir a conta com uma rota em andamento. Encerre a viagem primeiro.");
             }
             viagemRepository.deleteAllByTurmaMotoristaId(id);
+        }
+
+        try {
+            if (usuario.getFirebaseUid() != null && !usuario.getFirebaseUid().isBlank()) {
+                FirebaseAuth.getInstance().deleteUser(usuario.getFirebaseUid());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao excluir o utilizador no Firebase: " + e.getMessage());
         }
 
         presencaRepository.deleteAllByUsuarioId(id); 

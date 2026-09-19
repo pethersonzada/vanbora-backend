@@ -19,8 +19,8 @@ public class Usuario {
     @Column(nullable = false, unique = true)
     private String cpf;
 
-    @Column(nullable = false)
-    private String senha;
+    @Column(nullable = true)
+    private String firebaseUid;
 
     @Column(nullable = false)
     private String tipo;
@@ -41,8 +41,8 @@ public class Usuario {
     public void setTelefone(String telefone) { this.telefone = telefone; }
     public String getCpf() { return cpf; }
     public void setCpf(String cpf) { this.cpf = cpf; }
-    public String getSenha() { return senha; }
-    public void setSenha(String senha) { this.senha = senha; }
+    public String getFirebaseUid() { return firebaseUid; }
+    public void setFirebaseUid(String firebaseUid) { this.firebaseUid = firebaseUid; }
     public String getTipo() { return tipo; }
     public void setTipo(String tipo) { this.tipo = tipo; }
     public String getEnderecoCompleto() { return enderecoCompleto; }

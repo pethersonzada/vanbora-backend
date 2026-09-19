@@ -86,15 +86,6 @@ public class UsuarioController {
                 .orElse(ResponseEntity.status(404).build());
     }
 
-    @Operation(summary = "Login do Usuário", description = "Autentica o usuário pelo CPF e Senha.")
-    @PostMapping("/login")
-    public ResponseEntity<Usuario> login(@RequestBody Usuario loginRequest) {
-        return usuarioRepository.findByCpf(loginRequest.getCpf().trim())
-                .filter(u -> u.getSenha().trim().equals(loginRequest.getSenha().trim()))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.status(401).build());
-    }
-
     @Operation(summary = "Cadastrar Usuário", description = "Cria um novo registro. Impede cadastro com CPF duplicado.")
     @PostMapping("/cadastrar")
     public ResponseEntity<?> cadastrar(@RequestBody Usuario novoUsuario) {
