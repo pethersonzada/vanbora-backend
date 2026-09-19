@@ -12,5 +12,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     Optional<Usuario> findByTelefone(String telefone);
     
+    Optional<Usuario> findByFirebaseUid(String firebaseUid);
+
     List<Usuario> findByTipo(String tipo);
 }

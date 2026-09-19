@@ -86,6 +86,14 @@ public class UsuarioController {
                 .orElse(ResponseEntity.status(404).build());
     }
 
+    @Operation(summary = "Buscar por Firebase UID", description = "Retorna os dados do usuário com base no UID do Firebase Authentication.")
+    @GetMapping("/por-uid/{firebaseUid}")
+    public ResponseEntity<Usuario> buscarPorFirebaseUid(@PathVariable String firebaseUid) {
+        return usuarioRepository.findByFirebaseUid(firebaseUid)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(404).build());
+    }
+
     @Operation(summary = "Cadastrar Usuário", description = "Cria um novo registro.")
     @PostMapping("/cadastrar")
     public ResponseEntity<?> cadastrar(@RequestBody Usuario novoUsuario) {
