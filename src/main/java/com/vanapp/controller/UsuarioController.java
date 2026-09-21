@@ -124,6 +124,20 @@ public class UsuarioController {
         return ResponseEntity.ok(usuario);
     }
 
+    @Operation(summary = "Atualizar E-mail", description = "Atualiza o e-mail do usuário no banco local.")
+    @PutMapping("/{id}/email")
+    public ResponseEntity<?> atualizarEmail(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            String novoEmail = body.get("email");
+            Usuario usuarioAtualizado = usuarioService.atualizarEmail(id, novoEmail);
+            return ResponseEntity.ok(usuarioAtualizado);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("erro", "Erro interno: " + e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Excluir Usuário", description = "Apaga permanentemente a conta do usuário do sistema.")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> excluirConta(@PathVariable Long id) {

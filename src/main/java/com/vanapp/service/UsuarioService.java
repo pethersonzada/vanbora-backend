@@ -49,6 +49,26 @@ public class UsuarioService {
     }
 
     @Transactional
+    public Usuario atualizarEmail(Long id, String novoEmail) {
+        if (id == null) {
+            throw new RuntimeException("O ID não pode ser nulo.");
+        }
+        if (novoEmail == null || novoEmail.trim().isEmpty()) {
+            throw new RuntimeException("O novo e-mail não pode estar vazio.");
+        }
+
+        if (usuarioRepository.findByEmail(novoEmail).isPresent()) {
+            throw new RuntimeException("Este e-mail já está em uso por outro usuário.");
+        }
+
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado no sistema."));
+
+        usuario.setEmail(novoEmail.trim());
+        return usuarioRepository.save(usuario);
+    }
+
+    @Transactional
     public void excluirUsuario(Long id) {
         if (id == null) throw new RuntimeException("O ID fornecido para exclusão não pode ser nulo.");
 
