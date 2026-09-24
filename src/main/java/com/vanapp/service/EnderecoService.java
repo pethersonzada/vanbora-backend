@@ -23,7 +23,15 @@ public class EnderecoService {
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
         enderecoRequest.setUsuario(usuario);
-        return enderecoRepository.save(enderecoRequest);
+        Endereco salvo = enderecoRepository.save(enderecoRequest);
+
+        if (enderecoRequest.getLatitude() != null && enderecoRequest.getLongitude() != null) {
+            usuario.setLatitude(enderecoRequest.getLatitude());
+            usuario.setLongitude(enderecoRequest.getLongitude());
+            usuarioRepository.save(usuario);
+        }
+
+        return salvo;
     }
 
     public List<Endereco> listarPorUsuario(Long usuarioId) {
@@ -33,7 +41,7 @@ public class EnderecoService {
     public Endereco atualizarEndereco(Long id, Endereco enderecoRequest) {
         Endereco endereco = enderecoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Endereço não encontrado"));
-        
+
         if (enderecoRequest.getApelido() != null) {
             endereco.setApelido(enderecoRequest.getApelido());
         }
@@ -46,11 +54,14 @@ public class EnderecoService {
         if (enderecoRequest.getBairro() != null) {
             endereco.setBairro(enderecoRequest.getBairro());
         }
-        
+
         return enderecoRepository.save(endereco);
     }
 
     public void excluirEndereco(Long id) {
+        if (!enderecoRepository.existsById(id)) {
+            throw new RuntimeException("Endereço não encontrado");
+        }
         enderecoRepository.deleteById(id);
     }
 }
