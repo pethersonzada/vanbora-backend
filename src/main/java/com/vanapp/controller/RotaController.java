@@ -135,9 +135,9 @@ public class RotaController {
 
     @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas com os endereços do dia.")
     @GetMapping("/otimizar")
-    public ResponseEntity<?> otimizarRota(@RequestParam String sentido) {
+    public ResponseEntity<?> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
         try {
-            return ResponseEntity.ok(rotaService.otimizarRota(sentido));
+            return ResponseEntity.ok(rotaService.otimizarRota(sentido, turmaId));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
         } catch (Exception e) {

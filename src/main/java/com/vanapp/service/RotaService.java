@@ -16,8 +16,10 @@ import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.main;
 import com.vanapp.dto.PassageiroRotaDTO;
 import com.vanapp.model.Presenca;
+import com.vanapp.model.Turma;
 import com.vanapp.model.Usuario;
 import com.vanapp.repository.PresencaRepository;
+import com.vanapp.repository.TurmaRepository;
 import com.vanapp.repository.UsuarioRepository;
 
 @Service
@@ -25,12 +27,14 @@ public class RotaService {
 
     private final UsuarioRepository usuarioRepository;
     private final PresencaRepository presencaRepository;
+    private final TurmaRepository turmaRepository;
 
     static { Loader.loadNativeLibraries(); }
 
-    public RotaService(UsuarioRepository usuarioRepository, PresencaRepository presencaRepository) {
+    public RotaService(UsuarioRepository usuarioRepository, PresencaRepository presencaRepository, TurmaRepository turmaRepository) {
         this.usuarioRepository = usuarioRepository;
         this.presencaRepository = presencaRepository;
+        this.turmaRepository = turmaRepository;
     }
 
     private double calcularDistancia(double lat1, double lon1, double lat2, double lon2) {
@@ -43,9 +47,10 @@ public class RotaService {
         return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
-    public List<PassageiroRotaDTO> otimizarRota(String sentido) {
-        System.out.println("DEBUG: Iniciando otimização para sentido: " + sentido);
-        
+    public List<PassageiroRotaDTO> otimizarRota(String sentido, Long turmaId) {
+        Turma turma = turmaRepository.findById(turmaId)
+                .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
+
         List<Usuario> motoristas = usuarioRepository.findByTipo("MOTORISTA");
         if (motoristas.isEmpty()) {
             throw new RuntimeException("Nenhum motorista cadastrado no sistema.");
@@ -59,8 +64,11 @@ public class RotaService {
         List<Double> latsList = new ArrayList<>();
         List<Double> lonsList = new ArrayList<>();
 
-        latsList.add(motorista.getLatitude());
-        lonsList.add(motorista.getLongitude());
+        double origemLat = turma.getOrigemLatitude() != null ? turma.getOrigemLatitude() : motorista.getLatitude();
+        double origemLon = turma.getOrigemLongitude() != null ? turma.getOrigemLongitude() : motorista.getLongitude();
+
+        latsList.add(origemLat);
+        lonsList.add(origemLon);
 
         for (Presenca p : presencasDoDia) {
             if (p.getUsuario() != null && p.getStatus() != null) {
@@ -84,7 +92,13 @@ public class RotaService {
 
         if (passageirosDTO.isEmpty()) throw new RuntimeException("Nenhum passageiro confirmado para " + sentido);
 
-        int n = passageirosDTO.size() + 1;
+        double destinoLat = turma.getDestinoLatitude() != null ? turma.getDestinoLatitude() : -8.302755;
+        double destinoLon = turma.getDestinoLongitude() != null ? turma.getDestinoLongitude() : -35.991248;
+
+        latsList.add(destinoLat);
+        lonsList.add(destinoLon);
+
+        int n = latsList.size();
         double[] lats = new double[n];
         double[] lons = new double[n];
         for (int i = 0; i < n; i++) {
@@ -114,7 +128,10 @@ public class RotaService {
         List<PassageiroRotaDTO> rotaOtimizada = new ArrayList<>();
         long index = routing.start(0);
         while ((index = solution.value(routing.nextVar(index))) != routing.end(0)) {
-            rotaOtimizada.add(passageirosDTO.get(manager.indexToNode(index) - 1));
+            int nodeIndex = manager.indexToNode(index);
+            if (nodeIndex < latsList.size() - 1) {
+                rotaOtimizada.add(passageirosDTO.get(nodeIndex - 1));
+            }
         }
 
         if ("volta".equalsIgnoreCase(sentido)) Collections.reverse(rotaOtimizada);

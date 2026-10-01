@@ -20,17 +20,20 @@ public class TurmaService {
     private final UsuarioRepository usuarioRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
     private final ViagemRepository viagemRepository;
+    private final GeocodingService geocodingService;
 
     public TurmaService(
             TurmaRepository turmaRepository, 
             UsuarioRepository usuarioRepository, 
             AlunoTurmaRepository alunoTurmaRepository,
-            ViagemRepository viagemRepository
+            ViagemRepository viagemRepository,
+            GeocodingService geocodingService
     ) {
         this.turmaRepository = turmaRepository;
         this.usuarioRepository = usuarioRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
         this.viagemRepository = viagemRepository;
+        this.geocodingService = geocodingService;
     }
 
     public Turma criarTurma(Turma turma) {
@@ -45,6 +48,28 @@ public class TurmaService {
         
         if (turma.getCodigoConvite() == null || turma.getCodigoConvite().isEmpty()) {
             turma.setCodigoConvite(UUID.randomUUID().toString().substring(0, 6).toUpperCase());
+        }
+
+        if (turma.getDestinoNome() != null && !turma.getDestinoNome().isEmpty()) {
+            try {
+                double[] coords = geocodingService.geocodificarEndereco(turma.getDestinoNome());
+                turma.setDestinoLatitude(coords[0]);
+                turma.setDestinoLongitude(coords[1]);
+            } catch (Exception e) {
+                turma.setDestinoLatitude(-8.302755);
+                turma.setDestinoLongitude(-35.991248);
+            }
+        }
+
+        if (turma.getOrigemNome() != null && !turma.getOrigemNome().isEmpty()) {
+            try {
+                double[] coords = geocodingService.geocodificarEndereco(turma.getOrigemNome());
+                turma.setOrigemLatitude(coords[0]);
+                turma.setOrigemLongitude(coords[1]);
+            } catch (Exception e) {
+                turma.setOrigemLatitude(motorista.getLatitude());
+                turma.setOrigemLongitude(motorista.getLongitude());
+            }
         }
         
         return turmaRepository.save(turma);
@@ -94,6 +119,24 @@ public class TurmaService {
         
         turma.setNome(turmaAtualizada.getNome());
         turma.setTurno(turmaAtualizada.getTurno());
+
+        if (turmaAtualizada.getDestinoNome() != null && !turmaAtualizada.getDestinoNome().equals(turma.getDestinoNome())) {
+            turma.setDestinoNome(turmaAtualizada.getDestinoNome());
+            try {
+                double[] coords = geocodingService.geocodificarEndereco(turmaAtualizada.getDestinoNome());
+                turma.setDestinoLatitude(coords[0]);
+                turma.setDestinoLongitude(coords[1]);
+            } catch (Exception e) {}
+        }
+
+        if (turmaAtualizada.getOrigemNome() != null && !turmaAtualizada.getOrigemNome().equals(turma.getOrigemNome())) {
+            turma.setOrigemNome(turmaAtualizada.getOrigemNome());
+            try {
+                double[] coords = geocodingService.geocodificarEndereco(turmaAtualizada.getOrigemNome());
+                turma.setOrigemLatitude(coords[0]);
+                turma.setOrigemLongitude(coords[1]);
+            } catch (Exception e) {}
+        }
         
         return turmaRepository.save(turma);
     }
