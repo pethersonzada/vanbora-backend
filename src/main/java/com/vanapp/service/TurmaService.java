@@ -117,8 +117,12 @@ public class TurmaService {
         Turma turma = turmaRepository.findById(turmaId)
                 .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
         
-        turma.setNome(turmaAtualizada.getNome());
-        turma.setTurno(turmaAtualizada.getTurno());
+        if (turmaAtualizada.getNome() != null && !turmaAtualizada.getNome().trim().isEmpty()) {
+            turma.setNome(turmaAtualizada.getNome().trim());
+        }
+        if (turmaAtualizada.getTurno() != null && !turmaAtualizada.getTurno().trim().isEmpty()) {
+            turma.setTurno(turmaAtualizada.getTurno().trim());
+        }
 
         if (turmaAtualizada.getDestinoNome() != null && !turmaAtualizada.getDestinoNome().equals(turma.getDestinoNome())) {
             turma.setDestinoNome(turmaAtualizada.getDestinoNome());
