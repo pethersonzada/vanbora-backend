@@ -30,11 +30,11 @@ public class FirebaseConfig {
                 String rawJson = firebaseConfigJson.trim();
                 byte[] jsonBytes;
 
-                // Se começar com '{', já é o JSON cru. Caso contrário, faz o decode Base64 de forma segura
+                // Se começar com '{', é JSON cru. Se não, decodifica do Base64
                 if (rawJson.startsWith("{")) {
                     jsonBytes = rawJson.getBytes(StandardCharsets.UTF_8);
                 } else {
-                    // Trata caracteres de Base64 URL safe e remove quebras de linha
+                    // Sanitiza a string removendo espaços e tratando caracteres de URL
                     String sanitized = rawJson.replaceAll("\\s+", "").replace('-', '+').replace('_', '/');
                     jsonBytes = Base64.getDecoder().decode(sanitized);
                 }
@@ -48,7 +48,7 @@ public class FirebaseConfig {
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao inicializar Firebase: " + e.getMessage());
-                // Não lança RuntimeException para não derrubar a aplicação inteira no boot
+                // Tratado sem lançar RuntimeException para não crashar a API no boot
             }
         }
     }
