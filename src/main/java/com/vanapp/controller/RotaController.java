@@ -2,6 +2,7 @@ package com.vanapp.controller;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import com.vanapp.dto.PassageiroRotaDTO;
 import com.vanapp.model.Endereco;
 import com.vanapp.model.Presenca;
 import com.vanapp.model.Usuario;
@@ -129,7 +131,7 @@ public class RotaController {
 
     @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas com os endereços do dia.")
     @GetMapping("/otimizar")
-    public CompletableFuture<ResponseEntity<?>> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
+    public CompletableFuture<ResponseEntity<List<PassageiroRotaDTO>>> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
         return rotaService.otimizarRota(sentido, turmaId)
                 .thenApply(ResponseEntity::ok)
                 .exceptionally(ex -> {
