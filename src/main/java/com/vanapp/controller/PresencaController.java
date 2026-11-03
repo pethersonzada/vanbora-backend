@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
 
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +31,7 @@ public class PresencaController {
     }
 
     @Operation(summary = "Marcar Presença", description = "Registra o status do passageiro para a data atual.")
+    @CacheEvict(value = "rotasOtimizadas", allEntries = true)
     @PostMapping("/marcar")
     public ResponseEntity<String> marcarPresenca(@RequestBody Map<String, Object> payload) {
         Object rawId = payload.get("usuarioId");

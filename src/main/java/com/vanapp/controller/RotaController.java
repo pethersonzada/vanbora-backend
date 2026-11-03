@@ -4,8 +4,10 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -51,7 +53,7 @@ public class RotaController {
     private static final Map<Long, Map<String, Double>> localizacoesVans = new ConcurrentHashMap<>();
     private static final Set<Long> rotasAtivas = ConcurrentHashMap.newKeySet();
 
-    @Operation(summary = "Iniciar Rota")
+    @Operation(summary = "Iniciar Rota", description = "O motorista inicia a viagem oficialmente.")
     @PostMapping("/iniciar")
     public ResponseEntity> iniciarRota(@RequestBody Map<String, Object> payload) {
         Object turmaIdObj = payload.get("turmaId");
@@ -71,7 +73,7 @@ public class RotaController {
         return ResponseEntity.ok(Map.of("mensagem", "Rota iniciada com sucesso."));
     }
 
-    @Operation(summary = "Encerrar Rota")
+    @Operation(summary = "Encerrar Rota", description = "O motorista finaliza a viagem oficialmente.")
     @PostMapping("/encerrar")
     public ResponseEntity<String> encerrarRota(@RequestParam Long turmaId) {
         viagemService.encerrarRota(turmaId);
@@ -80,13 +82,14 @@ public class RotaController {
         return ResponseEntity.ok("Rota encerrada com sucesso.");
     }
 
-    @Operation(summary = "Status Atual")
+    @Operation(summary = "Status Atual", description = "Verifica se há viagem em andamento.")
     @GetMapping("/status-atual")
     public ResponseEntity> getStatusAtual(@RequestParam Long turmaId) {
         return ResponseEntity.ok(viagemService.verificarStatusAtual(turmaId));
     }
 
-    @Operation(summary = "Confirmar/Atualizar Presença")
+    @Operation(summary = "Confirmar/Atualizar Presença", description = "Marca a presença e o endereço específico do passageiro para o dia atual ou limpa o registro.")
+    @CacheEvict(value = "rotasOtimizadas", allEntries = true)
     @PostMapping("/confirmar")
     @Transactional
     public ResponseEntity<String> confirmarPresenca(
@@ -124,13 +127,18 @@ public class RotaController {
         return ResponseEntity.ok("SUCESSO");
     }
 
-    @Operation(summary = "Otimizar Rota")
+    @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas com os endereços do dia.")
     @GetMapping("/otimizar")
-    public ResponseEntity<?> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
-        return ResponseEntity.ok(rotaService.otimizarRota(sentido, turmaId));
+    public CompletableFuture<ResponseEntity<?>> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
+        return rotaService.otimizarRota(sentido, turmaId)
+                .thenApply(ResponseEntity::ok)
+                .exceptionally(ex -> {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    throw new RuntimeException(cause.getMessage(), cause);
+                });
     }
 
-    @Operation(summary = "Atualizar Localização")
+    @Operation(summary = "Atualizar Localização", description = "Motorista transmite coordenadas reais.")
     @PostMapping("/localizacao-van")
     public ResponseEntity<String> atualizarLocalizacaoVan(@RequestParam Long turmaId, @RequestParam Double latitude, @RequestParam Double longitude) {
         if (!rotasAtivas.contains(turmaId)) throw new RuntimeException("Rota inativa para esta turma.");
@@ -143,7 +151,7 @@ public class RotaController {
         return ResponseEntity.ok("Localização atualizada.");
     }
 
-    @Operation(summary = "Buscar Localização")
+    @Operation(summary = "Buscar Localização", description = "Passageiro consulta radar. Retorna 404 se a rota estiver inativa.")
     @GetMapping("/localizacao-van")
     public ResponseEntity> obterLocalizacaoVan(@RequestParam Long turmaId) {
         if (!rotasAtivas.contains(turmaId) || !localizacoesVans.containsKey(turmaId)) {

@@ -5,7 +5,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.google.ortools.Loader;
@@ -47,7 +50,9 @@ public class RotaService {
         return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
-    public List<PassageiroRotaDTO> otimizarRota(String sentido, Long turmaId) {
+    @Async("orToolsExecutor")
+    @Cacheable(value = "rotasOtimizadas", key = "#turmaId + '-' + #sentido")
+    public CompletableFuture<List<PassageiroRotaDTO>> otimizarRota(String sentido, Long turmaId) {
         Turma turma = turmaRepository.findById(turmaId)
                 .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
 
@@ -123,18 +128,19 @@ public class RotaService {
                         .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
                         .build());
 
-        if (solution == null) throw new RuntimeException("Falha na otimização da rota");
+        if (solution == null) throw new RuntimeException("Falha na otimização da rota. Nenhum caminho encontrado.");
 
         List<PassageiroRotaDTO> rotaOtimizada = new ArrayList<>();
         long index = routing.start(0);
         while ((index = solution.value(routing.nextVar(index))) != routing.end(0)) {
             int nodeIndex = manager.indexToNode(index);
-            if (nodeIndex < latsList.size() - 1) {
+            if (nodeIndex > 0 && nodeIndex < latsList.size() - 1) {
                 rotaOtimizada.add(passageirosDTO.get(nodeIndex - 1));
             }
         }
 
         if ("volta".equalsIgnoreCase(sentido)) Collections.reverse(rotaOtimizada);
-        return rotaOtimizada;
+        
+        return CompletableFuture.completedFuture(rotaOtimizada);
     }
 }

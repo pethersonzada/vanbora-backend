@@ -2,9 +2,13 @@ package com.vanapp.model;
 
 import java.time.LocalDateTime;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "viagem")
+@SQLDelete(sql = "UPDATE viagem SET excluido = true WHERE id=?")
+@SQLRestriction("excluido = false")
 public class Viagem {
 
     @Id
@@ -24,6 +28,9 @@ public class Viagem {
     @Column(name = "data_criacao", updatable = false)
     private LocalDateTime dataCriacao;
 
+    @Column(nullable = false)
+    private boolean excluido = false;
+
     @PrePersist
     protected void onCreate() {
         this.dataCriacao = LocalDateTime.now();
@@ -39,4 +46,7 @@ public class Viagem {
     public void setStatus(String status) { this.status = status; }
     public LocalDateTime getDataCriacao() { return dataCriacao; }
     public void setDataCriacao(LocalDateTime dataCriacao) { this.dataCriacao = dataCriacao; }
+    
+    public boolean isExcluido() { return excluido; }
+    public void setExcluido(boolean excluido) { this.excluido = excluido; }
 }

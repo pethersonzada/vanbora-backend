@@ -2,9 +2,13 @@ package com.vanapp.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "aluno_turma")
+@SQLDelete(sql = "UPDATE aluno_turma SET excluido = true WHERE id=?")
+@SQLRestriction("excluido = false")
 public class AlunoTurma {
 
     @Id
@@ -21,6 +25,9 @@ public class AlunoTurma {
     private Usuario aluno;
 
     private String status; // PENDENTE, APROVADO, REJEITADO
+
+    @Column(nullable = false)
+    private boolean excluido = false;
 
     public Long getId() {
         return id;
@@ -57,4 +64,7 @@ public class AlunoTurma {
     public void setStatus(String status) {
         this.status = status;
     }
+
+    public boolean isExcluido() { return excluido; }
+    public void setExcluido(boolean excluido) { this.excluido = excluido; }
 }
