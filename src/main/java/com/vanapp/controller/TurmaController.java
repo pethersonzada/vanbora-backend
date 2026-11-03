@@ -44,12 +44,12 @@ public class TurmaController {
 
     @Operation(summary = "Listar Passageiros da Turma")
     @GetMapping("/{turmaId}/passageiros")
-    public ResponseEntity<Object> listarPassageirosDaTurma(@PathVariable Long turmaId) {
+    public ResponseEntity<List>> listarPassageirosDaTurma(@PathVariable Long turmaId) {
         List<Usuario> passageiros = turmaService.listarPassageirosPorTurma(turmaId);
         if (passageiros.isEmpty()) return ResponseEntity.ok(List.of());
 
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
-        List<Long> ids = passageiros.stream().map(Usuario::getId).toList();
+        List<Long> ids = passageiros.stream().map(Usuario::getId).collect(Collectors.toList());
         List<Presenca> presencas = presencaRepository.findByUsuarioIdInAndData(ids, hoje);
         
         Map<Long, Presenca> mapPresencas = presencas.stream()
@@ -69,7 +69,7 @@ public class TurmaController {
             map.put("enderecoCompleto", endereco);
             map.put("status", p != null ? p.getStatus() : null);
             return map;
-        }).toList();
+        }).collect(Collectors.toList());
 
         return ResponseEntity.ok(resultado);
     }

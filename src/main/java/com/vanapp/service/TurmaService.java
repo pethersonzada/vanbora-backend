@@ -52,7 +52,7 @@ public class TurmaService {
 
         if (turma.getDestinoNome() != null && !turma.getDestinoNome().isEmpty()) {
             try {
-                double[] coords = geocodingService.geocodificarEndereco(turma.getDestinoNome());
+                double[] coords = geocodingService.geocodificarEndereco(turma.getDestinoNome(), "Pernambuco");
                 turma.setDestinoLatitude(coords[0]);
                 turma.setDestinoLongitude(coords[1]);
             } catch (Exception e) {
@@ -63,7 +63,7 @@ public class TurmaService {
 
         if (turma.getOrigemNome() != null && !turma.getOrigemNome().isEmpty()) {
             try {
-                double[] coords = geocodingService.geocodificarEndereco(turma.getOrigemNome());
+                double[] coords = geocodingService.geocodificarEndereco(turma.getOrigemNome(), "Pernambuco");
                 turma.setOrigemLatitude(coords[0]);
                 turma.setOrigemLongitude(coords[1]);
             } catch (Exception e) {
@@ -127,7 +127,7 @@ public class TurmaService {
         if (turmaAtualizada.getDestinoNome() != null && !turmaAtualizada.getDestinoNome().equals(turma.getDestinoNome())) {
             turma.setDestinoNome(turmaAtualizada.getDestinoNome());
             try {
-                double[] coords = geocodingService.geocodificarEndereco(turmaAtualizada.getDestinoNome());
+                double[] coords = geocodingService.geocodificarEndereco(turmaAtualizada.getDestinoNome(), "Pernambuco");
                 turma.setDestinoLatitude(coords[0]);
                 turma.setDestinoLongitude(coords[1]);
             } catch (Exception e) {}
@@ -136,7 +136,7 @@ public class TurmaService {
         if (turmaAtualizada.getOrigemNome() != null && !turmaAtualizada.getOrigemNome().equals(turma.getOrigemNome())) {
             turma.setOrigemNome(turmaAtualizada.getOrigemNome());
             try {
-                double[] coords = geocodingService.geocodificarEndereco(turmaAtualizada.getOrigemNome());
+                double[] coords = geocodingService.geocodificarEndereco(turmaAtualizada.getOrigemNome(), "Pernambuco");
                 turma.setOrigemLatitude(coords[0]);
                 turma.setOrigemLongitude(coords[1]);
             } catch (Exception e) {}

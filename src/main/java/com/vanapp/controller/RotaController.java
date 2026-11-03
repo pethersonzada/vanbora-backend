@@ -129,7 +129,7 @@ public class RotaController {
 
     @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas com os endereços do dia.")
     @GetMapping("/otimizar")
-    public CompletableFuture<ResponseEntity<Object>> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
+    public CompletableFuture<ResponseEntity<?>> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
         return rotaService.otimizarRota(sentido, turmaId)
                 .thenApply(ResponseEntity::ok)
                 .exceptionally(ex -> {
