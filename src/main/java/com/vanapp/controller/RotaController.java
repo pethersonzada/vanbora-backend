@@ -55,7 +55,7 @@ public class RotaController {
 
     @Operation(summary = "Iniciar Rota", description = "O motorista inicia a viagem oficialmente.")
     @PostMapping("/iniciar")
-    public ResponseEntity<?> iniciarRota(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity> iniciarRota(@RequestBody Map<String, Object> payload) {
         Object turmaIdObj = payload.get("turmaId");
         Object sentidoObj = payload.get("sentido");
 
@@ -84,7 +84,7 @@ public class RotaController {
 
     @Operation(summary = "Status Atual", description = "Verifica se há viagem em andamento.")
     @GetMapping("/status-atual")
-    public ResponseEntity<?> getStatusAtual(@RequestParam Long turmaId) {
+    public ResponseEntity> getStatusAtual(@RequestParam Long turmaId) {
         return ResponseEntity.ok(viagemService.verificarStatusAtual(turmaId));
     }
 
@@ -129,7 +129,7 @@ public class RotaController {
 
     @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas com os endereços do dia.")
     @GetMapping("/otimizar")
-    public CompletableFuture<ResponseEntity<?>> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
+    public CompletableFuture<ResponseEntity<Object>> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
         return rotaService.otimizarRota(sentido, turmaId)
                 .thenApply(ResponseEntity::ok)
                 .exceptionally(ex -> {

@@ -90,7 +90,7 @@ public class TurmaController {
 
     @Operation(summary = "Buscar Turma do Aluno")
     @GetMapping("/usuario/{usuarioId}")
-    public ResponseEntity<?> buscarTurmaPorUsuario(@PathVariable Long usuarioId) {
+    public ResponseEntity<Object> buscarTurmaPorUsuario(@PathVariable Long usuarioId) {
         Turma turma = turmaService.buscarTurmaPorAlunoId(usuarioId);
         if (turma == null) return ResponseEntity.status(404).body(Map.of("erro", "Aluno não vinculado a nenhuma turma."));
         return ResponseEntity.ok(turma);
@@ -111,7 +111,7 @@ public class TurmaController {
 
     @Operation(summary = "Listar Alunos Pendentes")
     @GetMapping("/{turmaId}/pendentes")
-    public ResponseEntity<?> listarAlunosPendentes(@PathVariable Long turmaId) {
+    public ResponseEntity<Object> listarAlunosPendentes(@PathVariable Long turmaId) {
         return ResponseEntity.ok(turmaService.listarAlunosPorStatus(turmaId, "PENDENTE"));
     }
 
