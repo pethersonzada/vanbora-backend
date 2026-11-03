@@ -55,7 +55,7 @@ public class RotaController {
 
     @Operation(summary = "Iniciar Rota", description = "O motorista inicia a viagem oficialmente.")
     @PostMapping("/iniciar")
-    public ResponseEntity> iniciarRota(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Object> iniciarRota(@RequestBody Map<String, Object> payload) {
         Object turmaIdObj = payload.get("turmaId");
         Object sentidoObj = payload.get("sentido");
 
@@ -84,7 +84,7 @@ public class RotaController {
 
     @Operation(summary = "Status Atual", description = "Verifica se há viagem em andamento.")
     @GetMapping("/status-atual")
-    public ResponseEntity> getStatusAtual(@RequestParam Long turmaId) {
+    public ResponseEntity<Object> getStatusAtual(@RequestParam Long turmaId) {
         return ResponseEntity.ok(viagemService.verificarStatusAtual(turmaId));
     }
 
@@ -153,7 +153,7 @@ public class RotaController {
 
     @Operation(summary = "Buscar Localização", description = "Passageiro consulta radar. Retorna 404 se a rota estiver inativa.")
     @GetMapping("/localizacao-van")
-    public ResponseEntity> obterLocalizacaoVan(@RequestParam Long turmaId) {
+    public ResponseEntity<Object> obterLocalizacaoVan(@RequestParam Long turmaId) {
         if (!rotasAtivas.contains(turmaId) || !localizacoesVans.containsKey(turmaId)) {
             return ResponseEntity.notFound().build();
         }

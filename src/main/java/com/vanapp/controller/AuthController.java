@@ -28,7 +28,7 @@ public class AuthController {
 
     @Operation(summary = "Login/Sincronização com Firebase", description = "Valida o token JWT do Firebase, identifica o utilizador pelo E-mail e retorna os dados de perfil.")
     @PostMapping("/login")
-    public ResponseEntity> login(
+    public ResponseEntity<Object> login(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody Map<String, String> payload) throws Exception {
         
