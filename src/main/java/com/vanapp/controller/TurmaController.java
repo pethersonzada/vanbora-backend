@@ -1,11 +1,10 @@
 package com.vanapp.controller;
-import java.util.List;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -52,17 +51,17 @@ public class TurmaController {
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
         List<Long> ids = passageiros.stream().map(Usuario::getId).collect(Collectors.toList());
         List<Presenca> presencas = presencaRepository.findByUsuarioIdInAndData(ids, hoje);
-        
+
         Map<Long, Presenca> mapPresencas = presencas.stream()
                 .collect(Collectors.toMap(p -> p.getUsuario().getId(), p -> p));
 
-        List> resultado = passageiros.stream().map(aluno -> {
+        List<Map<String, Object>> resultado = passageiros.stream().map(aluno -> {
             Presenca p = mapPresencas.get(aluno.getId());
             String endereco = aluno.getEnderecoCompleto();
             if (p != null && p.getEndereco() != null) {
                 endereco = p.getEndereco().getRua() + ", " + p.getEndereco().getNumero() + " - " + p.getEndereco().getBairro();
             }
-            
+
             Map<String, Object> map = new HashMap<>();
             map.put("id", aluno.getId());
             map.put("nome", aluno.getNome());
