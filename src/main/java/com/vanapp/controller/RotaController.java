@@ -55,7 +55,7 @@ public class RotaController {
 
     @Operation(summary = "Iniciar Rota", description = "O motorista inicia a viagem oficialmente.")
     @PostMapping("/iniciar")
-    public ResponseEntity> iniciarRota(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> iniciarRota(@RequestBody Map<String, Object> payload) {
         Object turmaIdObj = payload.get("turmaId");
         Object sentidoObj = payload.get("sentido");
 
@@ -84,7 +84,7 @@ public class RotaController {
 
     @Operation(summary = "Status Atual", description = "Verifica se há viagem em andamento.")
     @GetMapping("/status-atual")
-    public ResponseEntity> getStatusAtual(@RequestParam Long turmaId) {
+    public ResponseEntity<?> getStatusAtual(@RequestParam Long turmaId) {
         return ResponseEntity.ok(viagemService.verificarStatusAtual(turmaId));
     }
 
