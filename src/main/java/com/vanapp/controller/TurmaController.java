@@ -44,7 +44,7 @@ public class TurmaController {
 
     @Operation(summary = "Listar Passageiros da Turma")
     @GetMapping("/{turmaId}/passageiros")
-    public ResponseEntity<List>> listarPassageirosDaTurma(@PathVariable Long turmaId) {
+    public ResponseEntity<Object> listarPassageirosDaTurma(@PathVariable Long turmaId) {
         List<Usuario> passageiros = turmaService.listarPassageirosPorTurma(turmaId);
         if (passageiros.isEmpty()) return ResponseEntity.ok(List.of());
 
