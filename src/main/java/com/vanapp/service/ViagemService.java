@@ -22,12 +22,12 @@ public class ViagemService {
 
     public void iniciarRota(Long turmaId, String sentido) {
         Turma turma = turmaRepository.findById(turmaId)
-                .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
+                .orElseThrow(() -> new RuntimeException("Turma não encontrada no sistema."));
 
-        Optional<Viagem> viagemAtiva = viagemRepository.findFirstByStatus("EM_ANDAMENTO");
+        Optional<Viagem> viagemAtiva = viagemRepository.findFirstByTurmaIdAndStatus(turmaId, "EM_ANDAMENTO");
         
         if (viagemAtiva.isPresent()) {
-            throw new RuntimeException("Já existe uma rota em andamento.");
+            throw new RuntimeException("Já existe uma rota em andamento exclusivamente para esta turma.");
         }
 
         Viagem novaViagem = new Viagem();
@@ -38,18 +38,20 @@ public class ViagemService {
         viagemRepository.save(novaViagem);
     }
 
-    public void encerrarRota() {
-        Optional<Viagem> viagemAtiva = viagemRepository.findFirstByStatus("EM_ANDAMENTO");
+    public void encerrarRota(Long turmaId) {
+        Optional<Viagem> viagemAtiva = viagemRepository.findFirstByTurmaIdAndStatus(turmaId, "EM_ANDAMENTO");
         
         if (viagemAtiva.isPresent()) {
             Viagem viagem = viagemAtiva.get();
             viagem.setStatus("FINALIZADA");
             viagemRepository.save(viagem);
+        } else {
+            throw new RuntimeException("Tentativa de encerrar uma rota que não está em andamento para esta turma.");
         }
     }
 
-    public Map<String, Object> verificarStatusAtual() {
-        Optional<Viagem> viagemAtiva = viagemRepository.findFirstByStatus("EM_ANDAMENTO");
+    public Map<String, Object> verificarStatusAtual(Long turmaId) {
+        Optional<Viagem> viagemAtiva = viagemRepository.findFirstByTurmaIdAndStatus(turmaId, "EM_ANDAMENTO");
         Map<String, Object> resposta = new HashMap<>();
 
         if (viagemAtiva.isPresent()) {

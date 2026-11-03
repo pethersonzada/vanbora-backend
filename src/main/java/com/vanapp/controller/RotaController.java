@@ -3,17 +3,12 @@ package com.vanapp.controller;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.vanapp.model.Endereco;
 import com.vanapp.model.Presenca;
@@ -53,49 +48,45 @@ public class RotaController {
         this.viagemService = viagemService;
     }
 
-    private static final Map<String, Double> localizacaoAtualVan = new ConcurrentHashMap<>();
-    private static boolean rotaAtiva = false;
+    private static final Map<Long, Map<String, Double>> localizacoesVans = new ConcurrentHashMap<>();
+    private static final Set<Long> rotasAtivas = ConcurrentHashMap.newKeySet();
 
-    @Operation(summary = "Iniciar Rota", description = "O motorista inicia a viagem oficialmente.")
+    @Operation(summary = "Iniciar Rota")
     @PostMapping("/iniciar")
-    public ResponseEntity<?> iniciarRota(@RequestBody Map<String, Object> payload) {
-        try {
-            Object turmaIdObj = payload.get("turmaId");
-            Object sentidoObj = payload.get("sentido");
+    public ResponseEntity> iniciarRota(@RequestBody Map<String, Object> payload) {
+        Object turmaIdObj = payload.get("turmaId");
+        Object sentidoObj = payload.get("sentido");
 
-            if (turmaIdObj == null || sentidoObj == null) {
-                return ResponseEntity.badRequest().body(Map.of("erro", "Dados inválidos: turmaId e sentido são obrigatórios."));
-            }
-
-            Long turmaId = Long.valueOf(turmaIdObj.toString());
-            String sentido = sentidoObj.toString();
-            
-            viagemService.iniciarRota(turmaId, sentido);
-            rotaAtiva = true;
-            localizacaoAtualVan.clear();
-            
-            return ResponseEntity.ok(Map.of("mensagem", "Rota iniciada com sucesso."));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("erro", "Dados inválidos: " + e.getMessage()));
+        if (turmaIdObj == null || sentidoObj == null) {
+            throw new IllegalArgumentException("Dados inválidos: turmaId e sentido são obrigatórios.");
         }
+
+        Long turmaId = Long.valueOf(turmaIdObj.toString());
+        String sentido = sentidoObj.toString();
+        
+        viagemService.iniciarRota(turmaId, sentido);
+        rotasAtivas.add(turmaId);
+        localizacoesVans.remove(turmaId);
+        
+        return ResponseEntity.ok(Map.of("mensagem", "Rota iniciada com sucesso."));
     }
 
-    @Operation(summary = "Encerrar Rota", description = "O motorista finaliza a viagem oficialmente.")
+    @Operation(summary = "Encerrar Rota")
     @PostMapping("/encerrar")
-    public ResponseEntity<?> encerrarRota() {
-        viagemService.encerrarRota();
-        rotaAtiva = false;
-        localizacaoAtualVan.clear();
+    public ResponseEntity<String> encerrarRota(@RequestParam Long turmaId) {
+        viagemService.encerrarRota(turmaId);
+        rotasAtivas.remove(turmaId);
+        localizacoesVans.remove(turmaId);
         return ResponseEntity.ok("Rota encerrada com sucesso.");
     }
 
-    @Operation(summary = "Status Atual", description = "Verifica se há viagem em andamento.")
+    @Operation(summary = "Status Atual")
     @GetMapping("/status-atual")
-    public ResponseEntity<Map<String, Object>> getStatusAtual() {
-        return ResponseEntity.ok(viagemService.verificarStatusAtual());
+    public ResponseEntity> getStatusAtual(@RequestParam Long turmaId) {
+        return ResponseEntity.ok(viagemService.verificarStatusAtual(turmaId));
     }
 
-    @Operation(summary = "Confirmar/Atualizar Presença", description = "Marca a presença e o endereço específico do passageiro para o dia atual ou limpa o registro.")
+    @Operation(summary = "Confirmar/Atualizar Presença")
     @PostMapping("/confirmar")
     @Transactional
     public ResponseEntity<String> confirmarPresenca(
@@ -103,7 +94,7 @@ public class RotaController {
             @RequestParam String status,
             @RequestParam(required = false) Long enderecoId
     ) {
-        if (usuarioId == null) return ResponseEntity.badRequest().body("usuarioId não pode ser nulo");
+        if (usuarioId == null) throw new IllegalArgumentException("usuarioId não pode ser nulo");
 
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
         Presenca p = presencaRepository.findByUsuarioIdAndData(usuarioId, hoje);
@@ -133,34 +124,31 @@ public class RotaController {
         return ResponseEntity.ok("SUCESSO");
     }
 
-    @Operation(summary = "Otimizar Rota", description = "Calcula a melhor sequência de paradas com os endereços do dia.")
+    @Operation(summary = "Otimizar Rota")
     @GetMapping("/otimizar")
     public ResponseEntity<?> otimizarRota(@RequestParam String sentido, @RequestParam Long turmaId) {
-        try {
-            return ResponseEntity.ok(rotaService.otimizarRota(sentido, turmaId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("erro", "Erro interno: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(rotaService.otimizarRota(sentido, turmaId));
     }
 
-    @Operation(summary = "Atualizar Localização", description = "Motorista transmite coordenadas reais.")
+    @Operation(summary = "Atualizar Localização")
     @PostMapping("/localizacao-van")
-    public ResponseEntity<String> atualizarLocalizacaoVan(@RequestParam Double latitude, @RequestParam Double longitude) {
-        if (!rotaAtiva) return ResponseEntity.badRequest().body("Rota inativa.");
+    public ResponseEntity<String> atualizarLocalizacaoVan(@RequestParam Long turmaId, @RequestParam Double latitude, @RequestParam Double longitude) {
+        if (!rotasAtivas.contains(turmaId)) throw new RuntimeException("Rota inativa para esta turma.");
         
-        localizacaoAtualVan.put("latitude", latitude);
-        localizacaoAtualVan.put("longitude", longitude);
+        Map<String, Double> coords = new ConcurrentHashMap<>();
+        coords.put("latitude", latitude);
+        coords.put("longitude", longitude);
+        
+        localizacoesVans.put(turmaId, coords);
         return ResponseEntity.ok("Localização atualizada.");
     }
 
-    @Operation(summary = "Buscar Localização", description = "Passageiro consulta radar. Retorna 404 se a rota estiver inativa.")
+    @Operation(summary = "Buscar Localização")
     @GetMapping("/localizacao-van")
-    public ResponseEntity<Map<String, Double>> obterLocalizacaoVan() {
-        if (!rotaAtiva || localizacaoAtualVan.isEmpty()) {
+    public ResponseEntity> obterLocalizacaoVan(@RequestParam Long turmaId) {
+        if (!rotasAtivas.contains(turmaId) || !localizacoesVans.containsKey(turmaId)) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(localizacaoAtualVan);
+        return ResponseEntity.ok(localizacoesVans.get(turmaId));
     }
 }

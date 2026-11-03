@@ -5,11 +5,7 @@ import java.time.ZoneId;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.vanapp.model.Presenca;
 import com.vanapp.model.Usuario;
@@ -35,23 +31,21 @@ public class PresencaController {
 
     @Operation(summary = "Marcar Presença", description = "Registra o status do passageiro para a data atual.")
     @PostMapping("/marcar")
-    public ResponseEntity<?> marcarPresenca(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<String> marcarPresenca(@RequestBody Map<String, Object> payload) {
         Object rawId = payload.get("usuarioId");
         if (rawId == null) {
             rawId = payload.get("passageiroId");
         }
 
         if (rawId == null) {
-            return ResponseEntity.status(400).body("Erro: usuarioId é obrigatório");
+            throw new IllegalArgumentException("O usuarioId é obrigatório para registrar a presença.");
         }
 
         Long usuarioId = Long.valueOf(rawId.toString());
         String status = (String) payload.get("status");
 
-        Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
-        if (usuario == null) {
-            return ResponseEntity.status(404).body("Erro: Usuário não encontrado");
-        }
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado no sistema."));
 
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
         Presenca existente = presencaRepository.findByUsuarioIdAndData(usuarioId, hoje);
