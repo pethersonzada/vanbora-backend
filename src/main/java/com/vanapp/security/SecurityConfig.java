@@ -34,7 +34,17 @@ public class SecurityConfig {
             }))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/login", "/health", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers(
+                    "/auth/login", 
+                    "/health", 
+                    "/swagger-ui/**", 
+                    "/v3/api-docs/**",
+                    "/rota/**",
+                    "/turmas/**",
+                    "/presenca/**",
+                    "/enderecos/**",
+                    "/usuarios/**"
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(firebaseFilter, UsernamePasswordAuthenticationFilter.class);
