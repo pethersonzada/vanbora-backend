@@ -1,95 +1,75 @@
-# Documentação Técnica do Backend da Solução Van Bora
+# BeVans - Documentação Técnica do Backend
 
 ![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Maven](https://img.shields.io/badge/Maven-C71A36?style=for-the-badge&logo=apache-maven&logoColor=white)
 
+> ⚠️ **Aviso de Propriedade Intelectual:** Este repositório é de uso estritamente pessoal e acadêmico, mantido no GitHub apenas para controle de versão do projeto **BeVans**. A cópia, distribuição, comercialização ou uso não autorizado do código-fonte por terceiros é expressamente proibida.
+
 ## 1. Visão Geral da Arquitetura do Backend e Padrões de Projeto
 
-O ecossistema backend do Rota Estudantil é estruturado como uma API RESTful de alta performance e escalabilidade horizontal, desenvolvida em Java utilizando o ecossistema Spring Boot. O núcleo do sistema é responsável por processar o fluxo transacional crítico de rotas de transporte escolar, gerenciar vínculos relacionais complexos entre motoristas, turmas, escolas e passageiros, e garantir a persistência íntegra, segura e acidizada (ACID) dos dados operacionais em tempo real.
+O ecossistema backend do **BeVans** é estruturado como uma API RESTful de alta performance e escalabilidade horizontal, desenvolvida em Java utilizando o ecossistema Spring Boot. O núcleo do sistema é responsável por processar o fluxo transacional crítico de rotas de transporte escolar, gerenciar vínculos relacionais complexos entre motoristas, turmas, escolas e passageiros, e garantir a persistência íntegra, segura e acidizada (ACID) dos dados operacionais em tempo real.
 
-A arquitetura segue estritamente o padrão de camadas desacopladas (Presentation/Controller, Business/Service, Persistence/Repository, e Domain/Entity), promovendo inversão de controle e injeção de dependência gerenciada pelo container Spring. Isso garante baixo acoplamento entre os componentes, alta testabilidade unitária e de integração, e facilidade de manutenção evolutiva do código-fonte.
+A arquitetura segue estritamente o padrão de camadas desacopladas (Presentation/Controller, Business/Service, Persistence/Repository, e Domain/Entity), promovendo inversão de controle e injeção de dependência gerenciada pelo container Spring. Isso garante baixo acoplamento entre os componentes, testabilidade unitária e facilidade de manutenção evolutiva.
 
-## 2. Stack Tecnológica, Frameworks e Dependências Principais
+## 2. Autenticação, Segurança e Regras de Acesso
 
-* **Linguagem:** Java 17+ (utilizando recursos modernos como records, sealed classes e pattern matching)
-* **Framework Principal:** Spring Boot (versão 3.x)
-* **Persistência de Dados:** Spring Data JPA / Hibernate ORM para mapeamento objeto-relacional avançado
-* **Banco de Dados Relacional:** PostgreSQL (com suporte a índices espaciais e constraints complexas de integridade)
-* **Segurança, Autenticação e Autorização:** Spring Security, JSON Web Tokens (JWT) baseados em claims, e suporte a OAuth2/OIDC para federação de identidade
-* **Mapeamento de Objetos e Redução de Boilerplate:** Lombok
-* **Gerenciamento de Migrações de Banco:** Flyway para controle versionado e idempotente de scripts SQL estruturados
-* **Documentação e Teste de API:** SpringDoc OpenAPI 3 (Swagger UI integrado) para geração automática de contratos REST
-* **Gerenciamento de Build:** Maven com plugins de empacotamento otimizados para containers Docker
+Todas as rotas protegidas exigem obrigatoriamente o envio do token JWT emitido pelo Firebase Authentication no cabeçalho HTTP de autorização:
 
-## 3. Modelo de Domínio, Mapeamento Objeto-Relacional e Estrutura do Banco de Dados
+```
+Authorization: Bearer <FIREBASE_ID_TOKEN>
+```
 
-O banco de dados relacional (PostgreSQL) é composto por entidades fortemente tipadas, normalizadas até a terceira forma normal (3NF), e interconectadas por chaves estrangeiras com restrições rigorosas de integridade referencial e deleção em cascata controlada.
+### Regras Críticas de Negócio:
+* **Validação de Papel (*Role-Based Access Control*):** O backend NUNCA confia cegamente no tipo de usuário enviado pelo payload do cliente. O registro e privilégios de motoristas passam por validação estrita de chaves de autorização ou regras de negócio no servidor.
+* **Idempotência:** Endpoints transacionais críticos implementam tratamento contra duplicidade, evitando registros órfãos no banco de dados em caso de instabilidade na rede mobile.
 
-### 3.1 Entidades Principais e Relacionamentos
+## 3. Principais Endpoints (Contratos de API)
 
-* **Usuário (Tabela: `usuarios`):**
-  * Centraliza e armazena dados cadastrais unificados para todos os perfis do sistema (motoristas, passageiros/alunos e gestores institucionais).
-  * Campos críticos e restrições: `id` (PK, Long, Auto-increment), `nome` (String, Not Null), `email` (String, Unique, Not Null), `senha` (String, Hash seguro via BCrypt), `telefone` (String), `tipo_usuario` (Enum persistido como String: MOTORISTA, PASSAGEIRO, GESTOR), e timestamps de auditoria (`created_at`, `updated_at`).
+### 3.1 Usuários
+| Método | Endpoint | Descrição |
+| :--- | :--- | :--- |
+| `POST` | `/usuarios/cadastrar` | Registra o perfil do usuário no banco relacional após autenticação no Firebase. |
+| `GET` | `/usuarios/por-uid/{uid}` | Retorna as informações cadastrais do usuário filtradas por UID. |
+| `GET` | `/usuarios/passageiros` | Lista todos los passageiros vinculados e seus respectivos status de presença. |
+| `DELETE` | `/usuarios/{id}` | Remove o registro do usuário (exclusão de conta). |
 
-* **Turma (Tabela: `turmas`):**
-  * Representa o agrupamento lógico institucional de alunos vinculados a uma rota de transporte específica.
-  * Campos críticos e restrições: `id` (PK, Long), `nome` (String, Not Null), `turno` (Enum/String: MANHA, TARDE, NOITE), `motorista_id` (FK referenciando `usuarios.id`, permitindo nulos se a turma estiver temporariamente sem alocação de frota).
+### 3.2 Turmas e Vínculos
+| Método | Endpoint | Descrição |
+| :--- | :--- | :--- |
+| `POST` | `/turmas` | Cria uma nova turma (Nome, Turno, ID do Motorista). |
+| `PUT` | `/turmas/{id}` | Atualiza dados cadastrais, origem (garagem) e destino da turma. |
+| `POST` | `/turmas/entrar/{userId}?codigo=XXXXXX` | Processa a solicitação de vínculo do passageiro via código de convite. |
+| `PUT` | `/turmas/analisar/{vinculoId}?status=APROVADO` | Aprova ou rejeita o vínculo do aluno requisitante. |
+| `PUT` | `/turmas/{id}/regenerar-codigo` | Invalida a chave atual e gera um novo código alfanumérico de 6 caracteres. |
 
-* **Relacionamento Turma-Aluno (Tabela de Junção Associativa: `turma_alunos`):**
-  * Implementa um relacionamento estrutural de muitos-para-muitos (`ManyToMany`) entre as entidades Turmas e Passageiros.
-  * Campos de controle: `turma_id` (FK, Not Null), `aluno_id` (FK, Not Null), chave composta otimizada para evitar duplicidade de vínculo para o mesmo aluno na mesma turma.
+### 3.3 Rotas e Geolocalização
+| Método | Endpoint | Descrição |
+| :--- | :--- | :--- |
+| `GET` | `/rota/status-atual?turmaId=` | Identifica se há viagem em andamento e o sentido (`IDA` / `VOLTA`). |
+| `GET` | `/rota/otimizar?sentido=&turmaId=` | Executa o algoritmo de ordenação de paradas com base nas confirmações. |
+| `POST` | `/rota/iniciar` | Inicializa o ciclo de viagem para a turma informada. |
+| `POST` | `/rota/localizacao-van` | Persiste a coordenada geográfica atual da van enviada pelo motorista (~2s). |
+| `GET` | `/rota/localizacao-van` | Fornece a posição em tempo real para os clientes (radar dos passageiros). |
+| `POST` | `/rota/confirmar?usuarioId=&status=&enderecoId=` | Atualiza a intenção de presença diária do passageiro. |
+| `POST` | `/rota/encerrar` | Encerra formalmente o ciclo de viagem ativo. |
 
-* **Sessão de Rota / Viagem Ativa (Tabela: `sessoes_rota`):**
-  * Gerencia o ciclo de vida operacional do trajeto em tempo real, registrando quando o motorista inicia e finaliza uma linha.
-  * Campos críticos: `id` (PK, Long), `turma_id` (FK), `sentido` (Enum: IDA, VOLTA), `status` (Enum: ATIVA, PAUSADA, FINALIZADA), `timestamp_inicio` (DateTime), `timestamp_fim` (DateTime).
+## 4. Pré-requisitos, Instalação e Configuração
 
-* **Presença e Status Diário (Tabela: `presencas`):**
-  * Controla o fluxo de confirmação de embarque, desistência ou status de resposta de cada passageiro individual por viagem agendada.
+### 4.1 Requisitos de Ambiente
+* Java Development Kit (JDK) 17 ou superior.
+* Apache Maven 3.8+.
+* Banco de Dados PostgreSQL 14+.
+* Conta Google Firebase configurada com Firebase Admin SDK.
 
-## 4. Arquitetura de Endpoints da API REST (Mapeamento de Rotas e Contratos)
+### 4.2 Variáveis de Ambiente (`application.yml` / `.env`)
+```env
+SERVER_PORT=8080
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/bevans_db
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=sua_senha
+FIREBASE_CONFIG_PATH=classpath:firebase-service-account.json
+MAPBOX_SECRET_TOKEN=sk.xxxxxxxxxxxx
+```
 
-A API expõe recursos padronizados seguindo rigorosamente as restrições arquiteturais REST, utilizando verbos HTTP semânticos e códigos de status padronizados (2xx, 4xx, 5xx).
-
-### 4.1 Módulo de Autenticação e Controle de Acesso (`/api/auth`)
-* `POST /api/auth/login`: Autentica credenciais de usuário (email e senha), valida contra o banco via Spring Security e emite um token de acesso JWT assinado com chave criptográfica simétrica/assimétrica.
-* `POST /api/auth/registro`: Processa o cadastro inicial de novos usuários no sistema, aplicando validações de formato e unicidade de email.
-* `POST /api/auth/refresh`: Renova um token JWT expirado utilizando um token de atualização válido.
-
-### 4.2 Módulo de Gestão de Turmas e Vínculos (`/api/turmas`)
-* `GET /api/turmas/motorista/{motoristaId}`: Retorna a listagem otimizada de turmas atribuídas a um motorista específico, incluindo metadados de status.
-* `GET /api/turmas/{turmaId}/passageiros`: Retorna a relação detalhada de todos os alunos vinculados a uma turma, acompanhados de seus status de confirmação diária.
-* `POST /api/turmas/{turmaId}/alunos/{alunoId}`: Cria um vínculo relacional entre um aluno específico e uma turma ativa, validando se o aluno já não pertence a outra turma no mesmo horário.
-* `DELETE /api/turmas/{turmaId}/alunos/{alunoId}`: Remove o vínculo associativo de um aluno com a turma de forma segura (soft delete ou remoção física controlada por transação).
-
-### 4.3 Módulo de Usuários e Alunos Livres (`/api/usuarios`)
-* `GET /api/usuarios/passageiros`: Retorna a listagem filtrada de todos os usuários cadastrados com o perfil de passageiro que ainda não possuem vínculo com nenhuma turma (endpoint essencial para alimentar a interface de seleção do motorista).
-
-### 4.4 Módulo de Rotas e Monitoramento Operacional (`/api/rota`)
-* `GET /api/rota/status-atual`: Realiza uma checagem de estado operacional global para identificar se há alguma sessão de viagem ativa no momento para o contexto do usuário logado.
-* `POST /api/rota/iniciar`: Dispara a transação de abertura de uma nova sessão de rota para uma determinada turma e sentido, alterando o estado global no banco.
-* `POST /api/rota/finalizar`: Encerra uma sessão de rota ativa, gravando métricas de duração e desativando o rastreamento em tempo real.
-
-## 5. Estratégias de Tratamento de Erros, Resiliência e Segurança Transacional
-
-* **Global Exception Handler (`@ControllerAdvice` e `@ExceptionHandler`):**
-  * Intercepta centralizadamente todas as exceções não tratadas em nível de serviço, repositório ou validação de payload, convertendo-as de maneira uniforme em respostas HTTP padronizadas com payloads JSON descritivos contendo código de erro, timestamp, mensagem amigável e caminho da requisição (ex: `400 Bad Request`, `401 Unauthorized`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`).
-
-* **Segurança Transacional Robusta (`@Transactional`):**
-  * Uso extensivo e criterioso da anotação `@Transactional` nos métodos de serviço de negócio para garantir propriedades ACID completas (Atomicidade, Consistência, Isolamento e Durabilidade) em operações críticas de banco de dados (por exemplo, vínculos múltiplos, exclusões em cascata ou inicialização de rotas que alteram múltiplas tabelas simultaneamente).
-
-* **Validação de Dados de Entrada (Bean Validation / Jakarta Validation):**
-  * Aplicação de anotações como `@NotNull`, `@NotBlank`, `@Email`, `@Size` diretamente nos DTOs de entrada da API, bloqueando requisições malformadas antes mesmo que alcancem a camada de persistência.
-
-### Visualizar o Frontend da Aplicação
-
-https://github.com/pethersonzada/rota-estudantil-frontend
-
-## 🔒 Licença e Direitos Autorais
-
-Copyright© 2026 Miguel Petherson Silva. Todos os direitos reservados.
-
-Este software e sua documentação associada (o "Projeto Rota Estudantil") são de propriedade exclusiva do autor. 
-
-É expressamente proibida a cópia, modificação, distribuição, comercialização ou utilização total ou parcial deste código-fonte sem a autorização prévia e expressa por escrito do autor.
