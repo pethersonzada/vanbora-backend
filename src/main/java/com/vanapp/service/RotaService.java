@@ -5,9 +5,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
@@ -92,10 +90,6 @@ public class RotaService {
         Usuario motorista = motoristas.get(0);
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
         List<Presenca> presencasDoDia = presencaRepository.findByData(hoje);
-        
-        Set<Long> idsAlunosDaTurma = turma.getAlunos() != null 
-                ? turma.getAlunos().stream().map(Usuario::getId).collect(Collectors.toSet())
-                : Collections.emptySet();
 
         List<PassageiroRotaDTO> passageirosDTO = new ArrayList<>();
         List<Double> latsList = new ArrayList<>();
@@ -110,10 +104,6 @@ public class RotaService {
         for (Presenca p : presencasDoDia) {
             if (p.getUsuario() != null && p.getStatus() != null) {
                 Usuario aluno = p.getUsuario();
-                
-                if (!idsAlunosDaTurma.isEmpty() && !idsAlunosDaTurma.contains(aluno.getId())) {
-                    continue;
-                }
 
                 if (presencaValidaParaSentido(p.getStatus(), sentido)) {
                     double latFinal = aluno.getLatitude() != null ? aluno.getLatitude() : 0.0;
