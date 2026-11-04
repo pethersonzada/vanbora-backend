@@ -8,11 +8,11 @@
         <version>3.3.0</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.vanapp</groupId>
-    <artifactId>vanapp-backend</artifactId>
+    <groupId>com.bevans</groupId>
+    <artifactId>bevans-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>vanapp-backend</name>
-    <description/>
+    <name>bevans-backend</name>
+    <description>Backend do aplicativo Bevans</description>
     <url/>
     <licenses>
         <license/>
