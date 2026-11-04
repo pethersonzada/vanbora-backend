@@ -1,7 +1,9 @@
 package com.vanapp.service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.vanapp.model.Endereco;
 import com.vanapp.model.Presenca;
 import com.vanapp.repository.EnderecoRepository;
@@ -18,6 +20,7 @@ public class PresencaService {
         this.enderecoRepository = enderecoRepository;
     }
 
+    @Transactional
     public void registrarPresenca(Presenca presenca, Long enderecoId) {
         if (enderecoId != null) {
             Endereco endereco = enderecoRepository.findById(enderecoId)
@@ -25,7 +28,7 @@ public class PresencaService {
             presenca.setEndereco(endereco);
         }
         
-        presenca.setData(LocalDate.now());
+        presenca.setData(LocalDate.now(ZoneId.of("America/Recife")));
         presencaRepository.save(presenca);
     }
 }

@@ -29,37 +29,54 @@ public class GeocodingService {
             throw new IllegalArgumentException("A cidade é obrigatória e não pode ser nula ou vazia.");
         }
 
+        double[] coords = executarGeocodificacao(logradouro, cidade, true);
+        if (coords != null) return coords;
+
+        coords = executarGeocodificacao(logradouro, cidade, false);
+        if (coords != null) return coords;
+
+        String logradouroLimpo = logradouro
+                .replaceAll("(?i)(nº|num|número|apto|apt|bloco|bl|casa|quadra|qd|lt).*$", "")
+                .trim();
+        
+        if (!logradouroLimpo.equalsIgnoreCase(logradouro.trim()) && !logradouroLimpo.isBlank()) {
+            coords = executarGeocodificacao(logradouroLimpo, cidade, false);
+            if (coords != null) return coords;
+        }
+
+        throw new RuntimeException("Endereço não localizado na base de dados espacial: " + logradouro + ", " + cidade);
+    }
+
+    private double[] executarGeocodificacao(String logradouro, String cidade, boolean usarBounded) {
         String enderecoBlindado = logradouro.trim() + ", " + cidade.trim() + ESTADO_PAIS;
 
         try {
-            String url = UriComponentsBuilder.fromHttpUrl("https://nominatim.openstreetmap.org/search")
+            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl("https://nominatim.openstreetmap.org/search")
                     .queryParam("q", enderecoBlindado)
                     .queryParam("format", "json")
-                    .queryParam("limit", 1)
-                    .queryParam("viewbox", "-36.50,-8.00,-35.50,-8.50")
-                    .queryParam("bounded", 1)
-                    .toUriString();
+                    .queryParam("limit", 1);
+
+            if (usarBounded) {
+                builder.queryParam("viewbox", "-36.50,-8.00,-35.50,-8.50")
+                       .queryParam("bounded", 1);
+            }
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "vanapp-faculdade/1.0");
             HttpEntity<String> entity = new HttpEntity<>(headers);
-            
+
             ResponseEntity<String> response = restTemplate.exchange(
-                url, HttpMethod.GET, entity, String.class
+                builder.toUriString(), HttpMethod.GET, entity, String.class
             );
-            
+
             JsonNode node = objectMapper.readTree(response.getBody());
             if (node.isArray() && node.size() > 0) {
                 double lat = node.get(0).get("lat").asDouble();
                 double lon = node.get(0).get("lon").asDouble();
                 return new double[]{lat, lon};
             }
-        } catch (IOException e) {
-            throw new RuntimeException("Falha na leitura dos dados de geolocalização do Nominatim.", e);
-        } catch (RestClientException e) {
-            throw new RuntimeException("Serviço de geolocalização externo indisponível ou falhou.", e);
+        } catch (Exception e) {
         }
-        
-        throw new RuntimeException("Endereço não localizado na base de dados espacial: " + enderecoBlindado);
+        return null;
     }
 }

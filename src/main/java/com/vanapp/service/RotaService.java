@@ -5,7 +5,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
@@ -18,9 +20,11 @@ import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.main;
 import com.vanapp.dto.PassageiroRotaDTO;
+import com.vanapp.model.Endereco;
 import com.vanapp.model.Presenca;
 import com.vanapp.model.Turma;
 import com.vanapp.model.Usuario;
+import com.vanapp.repository.EnderecoRepository;
 import com.vanapp.repository.PresencaRepository;
 import com.vanapp.repository.TurmaRepository;
 import com.vanapp.repository.UsuarioRepository;
@@ -31,13 +35,20 @@ public class RotaService {
     private final UsuarioRepository usuarioRepository;
     private final PresencaRepository presencaRepository;
     private final TurmaRepository turmaRepository;
+    private final EnderecoRepository enderecoRepository;
 
     static { Loader.loadNativeLibraries(); }
 
-    public RotaService(UsuarioRepository usuarioRepository, PresencaRepository presencaRepository, TurmaRepository turmaRepository) {
+    public RotaService(
+            UsuarioRepository usuarioRepository, 
+            PresencaRepository presencaRepository, 
+            TurmaRepository turmaRepository,
+            EnderecoRepository enderecoRepository
+    ) {
         this.usuarioRepository = usuarioRepository;
         this.presencaRepository = presencaRepository;
         this.turmaRepository = turmaRepository;
+        this.enderecoRepository = enderecoRepository;
     }
 
     private double calcularDistancia(double lat1, double lon1, double lat2, double lon2) {
@@ -48,6 +59,23 @@ public class RotaService {
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    private boolean presencaValidaParaSentido(String status, String sentido) {
+        if (status == null || sentido == null) return false;
+        String st = status.trim().toUpperCase();
+        String sen = sentido.trim().toUpperCase();
+
+        if ("AMBOS".equals(st) || "IDA_VOLTA".equals(st) || "CONFIRMADO".equals(st) || "VOU".equals(st) || "PRESENTE".equals(st)) {
+            return true;
+        }
+        if ("IDA".equals(sen) && ("IDA".equals(st) || "SO_IDA".equals(st))) {
+            return true;
+        }
+        if ("VOLTA".equals(sen) && ("VOLTA".equals(st) || "SO_VOLTA".equals(st))) {
+            return true;
+        }
+        return st.equalsIgnoreCase(sen);
     }
 
     @Async("orToolsExecutor")
@@ -65,37 +93,58 @@ public class RotaService {
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
         List<Presenca> presencasDoDia = presencaRepository.findByData(hoje);
         
+        Set<Long> idsAlunosDaTurma = turma.getAlunos() != null 
+                ? turma.getAlunos().stream().map(Usuario::getId).collect(Collectors.toSet())
+                : Collections.emptySet();
+
         List<PassageiroRotaDTO> passageirosDTO = new ArrayList<>();
         List<Double> latsList = new ArrayList<>();
         List<Double> lonsList = new ArrayList<>();
 
-        double origemLat = turma.getOrigemLatitude() != null ? turma.getOrigemLatitude() : motorista.getLatitude();
-        double origemLon = turma.getOrigemLongitude() != null ? turma.getOrigemLongitude() : motorista.getLongitude();
+        double origemLat = turma.getOrigemLatitude() != null ? turma.getOrigemLatitude() : (motorista.getLatitude() != null ? motorista.getLatitude() : 0.0);
+        double origemLon = turma.getOrigemLongitude() != null ? turma.getOrigemLongitude() : (motorista.getLongitude() != null ? motorista.getLongitude() : 0.0);
 
         latsList.add(origemLat);
         lonsList.add(origemLon);
 
         for (Presenca p : presencasDoDia) {
             if (p.getUsuario() != null && p.getStatus() != null) {
-                if ("AMBOS".equalsIgnoreCase(p.getStatus()) || p.getStatus().equalsIgnoreCase(sentido)) {
-                    Usuario aluno = p.getUsuario();
-                    
-                    double latFinal = aluno.getLatitude();
-                    double lonFinal = aluno.getLongitude();
+                Usuario aluno = p.getUsuario();
+                
+                if (!idsAlunosDaTurma.isEmpty() && !idsAlunosDaTurma.contains(aluno.getId())) {
+                    continue;
+                }
+
+                if (presencaValidaParaSentido(p.getStatus(), sentido)) {
+                    double latFinal = aluno.getLatitude() != null ? aluno.getLatitude() : 0.0;
+                    double lonFinal = aluno.getLongitude() != null ? aluno.getLongitude() : 0.0;
 
                     if (p.getEndereco() != null && p.getEndereco().getLatitude() != null && p.getEndereco().getLongitude() != null) {
                         latFinal = p.getEndereco().getLatitude();
                         lonFinal = p.getEndereco().getLongitude();
+                    } else if (latFinal == 0.0 || lonFinal == 0.0) {
+                        List<Endereco> enderecosAluno = enderecoRepository.findByUsuarioId(aluno.getId());
+                        if (enderecosAluno != null && !enderecosAluno.isEmpty()) {
+                            for (Endereco end : enderecosAluno) {
+                                if (end.getLatitude() != null && end.getLongitude() != null && end.getLatitude() != 0.0 && end.getLongitude() != 0.0) {
+                                    latFinal = end.getLatitude();
+                                    lonFinal = end.getLongitude();
+                                    break;
+                                }
+                            }
+                        }
                     }
 
-                    passageirosDTO.add(new PassageiroRotaDTO(aluno.getId(), aluno.getNome(), latFinal, lonFinal));
-                    latsList.add(latFinal);
-                    lonsList.add(lonFinal);
+                    if (latFinal != 0.0 && lonFinal != 0.0) {
+                        passageirosDTO.add(new PassageiroRotaDTO(aluno.getId(), aluno.getNome(), latFinal, lonFinal));
+                        latsList.add(latFinal);
+                        lonsList.add(lonFinal);
+                    }
                 }
             }
         }
 
-        if (passageirosDTO.isEmpty()) throw new RuntimeException("Nenhum passageiro confirmado para " + sentido);
+        if (passageirosDTO.isEmpty()) throw new RuntimeException("Nenhum passageiro confirmado com endereço válido para " + sentido);
 
         double destinoLat = turma.getDestinoLatitude() != null ? turma.getDestinoLatitude() : -8.302755;
         double destinoLon = turma.getDestinoLongitude() != null ? turma.getDestinoLongitude() : -35.991248;

@@ -2,6 +2,9 @@ package com.vanapp.repository;
 
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import com.vanapp.model.Viagem;
 
 public interface ViagemRepository extends JpaRepository<Viagem, Long> {
@@ -11,6 +14,11 @@ public interface ViagemRepository extends JpaRepository<Viagem, Long> {
     boolean existsByTurmaIdAndStatus(Long turmaId, String status);
     boolean existsByTurmaMotoristaIdAndStatus(Long motoristaId, String status);
     
-    void deleteAllByTurmaId(Long turmaId);
-    void deleteAllByTurmaMotoristaId(Long motoristaId);
+    @Modifying
+    @Query("DELETE FROM Viagem v WHERE v.turma.id = :turmaId")
+    void deleteAllByTurmaId(@Param("turmaId") Long turmaId);
+
+    @Modifying
+    @Query("DELETE FROM Viagem v WHERE v.turma.motorista.id = :motoristaId")
+    void deleteAllByTurmaMotoristaId(@Param("motoristaId") Long motoristaId);
 }

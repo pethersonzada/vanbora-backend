@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.vanapp.model.Turma;
 import com.vanapp.model.Viagem;
 import com.vanapp.repository.TurmaRepository;
@@ -20,6 +21,7 @@ public class ViagemService {
         this.turmaRepository = turmaRepository;
     }
 
+    @Transactional
     public void iniciarRota(Long turmaId, String sentido) {
         Turma turma = turmaRepository.findById(turmaId)
                 .orElseThrow(() -> new RuntimeException("Turma não encontrada no sistema."));
@@ -38,6 +40,7 @@ public class ViagemService {
         viagemRepository.save(novaViagem);
     }
 
+    @Transactional
     public void encerrarRota(Long turmaId) {
         Optional<Viagem> viagemAtiva = viagemRepository.findFirstByTurmaIdAndStatus(turmaId, "EM_ANDAMENTO");
         
@@ -45,11 +48,10 @@ public class ViagemService {
             Viagem viagem = viagemAtiva.get();
             viagem.setStatus("FINALIZADA");
             viagemRepository.save(viagem);
-        } else {
-            throw new RuntimeException("Tentativa de encerrar uma rota que não está em andamento para esta turma.");
         }
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> verificarStatusAtual(Long turmaId) {
         Optional<Viagem> viagemAtiva = viagemRepository.findFirstByTurmaIdAndStatus(turmaId, "EM_ANDAMENTO");
         Map<String, Object> resposta = new HashMap<>();
