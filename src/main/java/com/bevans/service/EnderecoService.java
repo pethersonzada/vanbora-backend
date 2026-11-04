@@ -2,10 +2,10 @@ package com.bevans.service;
 
 import java.util.List;
 import org.springframework.stereotype.Service;
-import com.vanapp.model.Endereco;
-import com.vanapp.model.Usuario;
-import com.vanapp.repository.EnderecoRepository;
-import com.vanapp.repository.UsuarioRepository;
+import com.bevans.model.Endereco;
+import com.bevans.model.Usuario;
+import com.bevans.repository.EnderecoRepository;
+import com.bevans.repository.UsuarioRepository;
 
 @Service
 public class EnderecoService {

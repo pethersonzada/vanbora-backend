@@ -17,15 +17,15 @@ import com.google.ortools.constraintsolver.FirstSolutionStrategy;
 import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.main;
-import com.vanapp.dto.PassageiroRotaDTO;
-import com.vanapp.model.Endereco;
-import com.vanapp.model.Presenca;
-import com.vanapp.model.Turma;
-import com.vanapp.model.Usuario;
-import com.vanapp.repository.EnderecoRepository;
-import com.vanapp.repository.PresencaRepository;
-import com.vanapp.repository.TurmaRepository;
-import com.vanapp.repository.UsuarioRepository;
+import com.bevans.dto.PassageiroRotaDTO;
+import com.bevans.model.Endereco;
+import com.bevans.model.Presenca;
+import com.bevans.model.Turma;
+import com.bevans.model.Usuario;
+import com.bevans.repository.EnderecoRepository;
+import com.bevans.repository.PresencaRepository;
+import com.bevans.repository.TurmaRepository;
+import com.bevans.repository.UsuarioRepository;
 
 @Service
 public class RotaService {

@@ -5,10 +5,10 @@ import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.vanapp.model.Turma;
-import com.vanapp.model.Viagem;
-import com.vanapp.repository.TurmaRepository;
-import com.vanapp.repository.ViagemRepository;
+import com.bevans.model.Turma;
+import com.bevans.model.Viagem;
+import com.bevans.repository.TurmaRepository;
+import com.bevans.repository.ViagemRepository;
 
 @Service
 public class ViagemService {

@@ -8,11 +8,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.vanapp.model.Presenca;
-import com.vanapp.model.Turma;
-import com.vanapp.model.Usuario;
-import com.vanapp.repository.PresencaRepository;
-import com.vanapp.service.TurmaService;
+import com.bevans.model.Presenca;
+import com.bevans.model.Turma;
+import com.bevans.model.Usuario;
+import com.bevans.repository.PresencaRepository;
+import com.bevans.service.TurmaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 

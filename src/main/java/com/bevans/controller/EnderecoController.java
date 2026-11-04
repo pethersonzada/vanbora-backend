@@ -5,8 +5,8 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.vanapp.model.Endereco;
-import com.vanapp.service.EnderecoService;
+import com.bevans.model.Endereco;
+import com.bevans.service.EnderecoService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

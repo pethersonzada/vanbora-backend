@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import com.vanapp.model.Presenca;
+import com.bevans.model.Presenca;
 
 public interface PresencaRepository extends JpaRepository<Presenca, Long> {
 

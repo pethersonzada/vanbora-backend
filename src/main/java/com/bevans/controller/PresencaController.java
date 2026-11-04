@@ -8,10 +8,10 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.vanapp.model.Presenca;
-import com.vanapp.model.Usuario;
-import com.vanapp.repository.PresencaRepository;
-import com.vanapp.repository.UsuarioRepository;
+import com.bevans.model.Presenca;
+import com.bevans.model.Usuario;
+import com.bevans.repository.PresencaRepository;
+import com.bevans.repository.UsuarioRepository;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

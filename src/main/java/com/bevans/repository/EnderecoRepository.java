@@ -1,6 +1,6 @@
 package com.bevans.repository;
 
-import com.vanapp.model.Endereco;
+import com.bevans.model.Endereco;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 

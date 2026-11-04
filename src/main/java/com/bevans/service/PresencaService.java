@@ -4,10 +4,10 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.vanapp.model.Endereco;
-import com.vanapp.model.Presenca;
-import com.vanapp.repository.EnderecoRepository;
-import com.vanapp.repository.PresencaRepository;
+import com.bevans.model.Endereco;
+import com.bevans.model.Presenca;
+import com.bevans.repository.EnderecoRepository;
+import com.bevans.repository.PresencaRepository;
 
 @Service
 public class PresencaService {

@@ -4,14 +4,14 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
-import com.vanapp.model.AlunoTurma;
-import com.vanapp.model.Turma;
-import com.vanapp.model.Usuario;
-import com.vanapp.model.Viagem;
-import com.vanapp.repository.AlunoTurmaRepository;
-import com.vanapp.repository.TurmaRepository;
-import com.vanapp.repository.UsuarioRepository;
-import com.vanapp.repository.ViagemRepository;
+import com.bevans.model.AlunoTurma;
+import com.bevans.model.Turma;
+import com.bevans.model.Usuario;
+import com.bevans.model.Viagem;
+import com.bevans.repository.AlunoTurmaRepository;
+import com.bevans.repository.TurmaRepository;
+import com.bevans.repository.UsuarioRepository;
+import com.bevans.repository.ViagemRepository;
 
 @Service
 public class TurmaService {

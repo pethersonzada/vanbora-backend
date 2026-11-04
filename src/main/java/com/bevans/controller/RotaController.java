@@ -13,15 +13,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import com.vanapp.dto.PassageiroRotaDTO;
-import com.vanapp.model.Endereco;
-import com.vanapp.model.Presenca;
-import com.vanapp.model.Usuario;
-import com.vanapp.repository.EnderecoRepository;
-import com.vanapp.repository.PresencaRepository;
-import com.vanapp.repository.UsuarioRepository;
-import com.vanapp.service.RotaService;
-import com.vanapp.service.ViagemService;
+import com.bevans.dto.PassageiroRotaDTO;
+import com.bevans.model.Endereco;
+import com.bevans.model.Presenca;
+import com.bevans.model.Usuario;
+import com.bevans.repository.EnderecoRepository;
+import com.bevans.repository.PresencaRepository;
+import com.bevans.repository.UsuarioRepository;
+import com.bevans.service.RotaService;
+import com.bevans.service.ViagemService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

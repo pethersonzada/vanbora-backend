@@ -18,12 +18,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.vanapp.dto.EnderecoRequest;
-import com.vanapp.model.Presenca;
-import com.vanapp.model.Usuario;
-import com.vanapp.repository.PresencaRepository;
-import com.vanapp.repository.UsuarioRepository;
-import com.vanapp.service.UsuarioService;
+import com.bevans.dto.EnderecoRequest;
+import com.bevans.model.Presenca;
+import com.bevans.model.Usuario;
+import com.bevans.repository.PresencaRepository;
+import com.bevans.repository.UsuarioRepository;
+import com.bevans.service.UsuarioService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

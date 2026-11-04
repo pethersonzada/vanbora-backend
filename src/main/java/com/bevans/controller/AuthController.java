@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.*;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseToken;
-import com.vanapp.model.Usuario;
-import com.vanapp.repository.UsuarioRepository;
+import com.bevans.model.Usuario;
+import com.bevans.repository.UsuarioRepository;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -6,10 +6,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.vanapp.model.Usuario;
-import com.vanapp.repository.PresencaRepository;
-import com.vanapp.repository.UsuarioRepository;
-import com.vanapp.repository.ViagemRepository;
+import com.bevans.model.Usuario;
+import com.bevans.repository.PresencaRepository;
+import com.bevans.repository.UsuarioRepository;
+import com.bevans.repository.ViagemRepository;
 
 @Service
 public class UsuarioService {

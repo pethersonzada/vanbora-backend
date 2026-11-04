@@ -1,7 +1,7 @@
 package com.bevans.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import com.vanapp.model.Turma;
+import com.bevans.model.Turma;
 import java.util.List;
 import java.util.Optional;
 
