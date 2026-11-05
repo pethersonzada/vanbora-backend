@@ -11,12 +11,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import com.google.ortools.Loader;
-import com.google.ortools.constraintsolver.Assignment;
-import com.google.ortools.constraintsolver.FirstSolutionStrategy;
-import com.google.ortools.constraintsolver.RoutingIndexManager;
-import com.google.ortools.constraintsolver.RoutingModel;
-import com.google.ortools.constraintsolver.main;
 import com.bevans.dto.PassageiroRotaDTO;
 import com.bevans.model.Endereco;
 import com.bevans.model.Presenca;
@@ -25,25 +19,29 @@ import com.bevans.model.Usuario;
 import com.bevans.repository.EnderecoRepository;
 import com.bevans.repository.PresencaRepository;
 import com.bevans.repository.TurmaRepository;
-import com.bevans.repository.UsuarioRepository;
+import com.google.ortools.Loader;
+import com.google.ortools.constraintsolver.Assignment;
+import com.google.ortools.constraintsolver.FirstSolutionStrategy;
+import com.google.ortools.constraintsolver.RoutingIndexManager;
+import com.google.ortools.constraintsolver.RoutingModel;
+import com.google.ortools.constraintsolver.main;
 
 @Service
 public class RotaService {
 
-    private final UsuarioRepository usuarioRepository;
     private final PresencaRepository presencaRepository;
     private final TurmaRepository turmaRepository;
     private final EnderecoRepository enderecoRepository;
 
-    static { Loader.loadNativeLibraries(); }
+    static {
+        Loader.loadNativeLibraries();
+    }
 
     public RotaService(
-            UsuarioRepository usuarioRepository, 
-            PresencaRepository presencaRepository, 
+            PresencaRepository presencaRepository,
             TurmaRepository turmaRepository,
             EnderecoRepository enderecoRepository
     ) {
-        this.usuarioRepository = usuarioRepository;
         this.presencaRepository = presencaRepository;
         this.turmaRepository = turmaRepository;
         this.enderecoRepository = enderecoRepository;
@@ -60,7 +58,9 @@ public class RotaService {
     }
 
     private boolean presencaValidaParaSentido(String status, String sentido) {
-        if (status == null || sentido == null) return false;
+        if (status == null || sentido == null) {
+            return false;
+        }
         String st = status.trim().toUpperCase();
         String sen = sentido.trim().toUpperCase();
 
@@ -81,15 +81,16 @@ public class RotaService {
     public CompletableFuture<List<PassageiroRotaDTO>> otimizarRota(String sentido, Long turmaId) {
         Turma turma = turmaRepository.findById(turmaId)
                 .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
+        Usuario motorista = turma.getMotorista();
 
-        List<Usuario> motoristas = usuarioRepository.findByTipo("MOTORISTA");
-        if (motoristas.isEmpty()) {
-            throw new RuntimeException("Nenhum motorista cadastrado no sistema.");
+        if (motorista == null) {
+            throw new RuntimeException(
+                    "Esta turma não possui motorista associado."
+            );
         }
-        
-        Usuario motorista = motoristas.get(0);
         LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
-        List<Presenca> presencasDoDia = presencaRepository.findByData(hoje);
+        List<Presenca> presencasDoDia
+                = presencaRepository.findByDataAndTurmaId(hoje, turmaId);
 
         List<PassageiroRotaDTO> passageirosDTO = new ArrayList<>();
         List<Double> latsList = new ArrayList<>();
@@ -134,7 +135,9 @@ public class RotaService {
             }
         }
 
-        if (passageirosDTO.isEmpty()) throw new RuntimeException("Nenhum passageiro confirmado com endereço válido para " + sentido);
+        if (passageirosDTO.isEmpty()) {
+            throw new RuntimeException("Nenhum passageiro confirmado com endereço válido para " + sentido);
+        }
 
         double destinoLat = turma.getDestinoLatitude() != null ? turma.getDestinoLatitude() : -8.302755;
         double destinoLon = turma.getDestinoLongitude() != null ? turma.getDestinoLongitude() : -35.991248;
@@ -167,7 +170,9 @@ public class RotaService {
                         .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
                         .build());
 
-        if (solution == null) throw new RuntimeException("Falha na otimização da rota. Nenhum caminho encontrado.");
+        if (solution == null) {
+            throw new RuntimeException("Falha na otimização da rota. Nenhum caminho encontrado.");
+        }
 
         List<PassageiroRotaDTO> rotaOtimizada = new ArrayList<>();
         long index = routing.start(0);
@@ -178,8 +183,10 @@ public class RotaService {
             }
         }
 
-        if ("volta".equalsIgnoreCase(sentido)) Collections.reverse(rotaOtimizada);
-        
+        if ("volta".equalsIgnoreCase(sentido)) {
+            Collections.reverse(rotaOtimizada);
+        }
+
         return CompletableFuture.completedFuture(rotaOtimizada);
     }
 }
