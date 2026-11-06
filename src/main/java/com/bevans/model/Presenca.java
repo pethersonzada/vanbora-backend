@@ -1,3 +1,4 @@
+
 package com.bevans.model;
 
 import java.time.LocalDate;
@@ -11,15 +12,28 @@ public class Presenca {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "turma_id")
+    private Turma turma;
+
+    // Campo antigo mantido para compatibilidade.
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "endereco_id")
     private Endereco endereco;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "endereco_ida_id")
+    private Endereco enderecoIda;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "endereco_volta_id")
+    private Endereco enderecoVolta;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "viagem_id")
     private Viagem viagem;
 
@@ -45,12 +59,36 @@ public class Presenca {
         this.usuario = usuario;
     }
 
+    public Turma getTurma() {
+        return turma;
+    }
+
+    public void setTurma(Turma turma) {
+        this.turma = turma;
+    }
+
     public Endereco getEndereco() {
         return endereco;
     }
 
     public void setEndereco(Endereco endereco) {
         this.endereco = endereco;
+    }
+
+    public Endereco getEnderecoIda() {
+        return enderecoIda;
+    }
+
+    public void setEnderecoIda(Endereco enderecoIda) {
+        this.enderecoIda = enderecoIda;
+    }
+
+    public Endereco getEnderecoVolta() {
+        return enderecoVolta;
+    }
+
+    public void setEnderecoVolta(Endereco enderecoVolta) {
+        this.enderecoVolta = enderecoVolta;
     }
 
     public Viagem getViagem() {

@@ -84,18 +84,39 @@ public class TurmaService {
         return vinculos.stream().map(AlunoTurma::getAluno).collect(Collectors.toList());
     }
 
-    public void adicionarAluno(Long turmaId, Long alunoId) {
-        Turma turma = turmaRepository.findById(turmaId)
-                .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
-        Usuario aluno = usuarioRepository.findById(alunoId)
-                .orElseThrow(() -> new RuntimeException("Aluno não encontrado."));
+    
+public void adicionarAluno(Long turmaId, Long alunoId) {
+    Turma turma = turmaRepository.findById(turmaId)
+            .orElseThrow(() ->
+                    new IllegalArgumentException(
+                            "Turma não encontrada."
+                    )
+            );
 
-        AlunoTurma vinculo = new AlunoTurma();
+    Usuario aluno = usuarioRepository.findById(alunoId)
+            .orElseThrow(() ->
+                    new IllegalArgumentException(
+                            "Aluno não encontrado."
+                    )
+            );
+
+    AlunoTurma vinculo = alunoTurmaRepository
+            .findByTurmaIdAndAlunoId(
+                    turmaId, alunoId
+            )
+            .orElse(null);
+
+    if (vinculo == null) {
+        vinculo = new AlunoTurma();
         vinculo.setTurma(turma);
         vinculo.setAluno(aluno);
-        vinculo.setStatus("APROVADO");
-        alunoTurmaRepository.save(vinculo);
     }
+
+    vinculo.setStatus("APROVADO");
+
+    alunoTurmaRepository.save(vinculo);
+}
+
 
     public void removerAluno(Long turmaId, Long alunoId) {
         AlunoTurma vinculo = alunoTurmaRepository.findByTurmaIdAndAlunoId(turmaId, alunoId)
@@ -103,15 +124,27 @@ public class TurmaService {
         alunoTurmaRepository.delete(vinculo);
     }
 
-    public Turma buscarTurmaPorAlunoId(Long alunoId) {
-        List<AlunoTurma> vinculos = alunoTurmaRepository.findAll();
-        for (AlunoTurma v : vinculos) {
-            if (v.getAluno().getId().equals(alunoId) && "APROVADO".equals(v.getStatus())) {
-                return v.getTurma();
-            }
-        }
-        return null;
-    }
+    
+public List<Turma> listarTurmasDoAluno(Long alunoId) {
+    return alunoTurmaRepository
+            .findByAlunoIdAndStatus(
+                    alunoId, "APROVADO"
+            )
+            .stream()
+            .map(AlunoTurma::getTurma)
+            .filter(turma -> turma != null)
+            .distinct()
+            .toList();
+}
+
+// Compatibilidade com o endpoint antigo.
+public Turma buscarTurmaPorAlunoId(Long alunoId) {
+    return listarTurmasDoAluno(alunoId)
+            .stream()
+            .findFirst()
+            .orElse(null);
+}
+
 
      public Turma atualizarTurma(Long turmaId, Turma turmaAtualizada) {
         Turma turma = turmaRepository.findById(turmaId)
@@ -185,20 +218,64 @@ public class TurmaService {
         }
     }
 
-    public void solicitarEntradaPorCodigo(Long alunoId, String codigo) {
-        Turma turma = turmaRepository.findByCodigoConvite(codigo.toUpperCase())
-                .orElseThrow(() -> new RuntimeException("Código de convite inválido."));
-        
-        Usuario aluno = usuarioRepository.findById(alunoId)
-                .orElseThrow(() -> new RuntimeException("Aluno não encontrado."));
+    
+public void solicitarEntradaPorCodigo(
+        Long alunoId,
+        String codigo
+) {
+    if (codigo == null || codigo.isBlank()) {
+        throw new IllegalArgumentException(
+                "Informe o código de convite."
+        );
+    }
 
-        AlunoTurma vinculo = new AlunoTurma();
+    Turma turma = turmaRepository
+            .findByCodigoConvite(
+                    codigo.trim().toUpperCase()
+            )
+            .orElseThrow(() ->
+                    new IllegalArgumentException(
+                            "Código de convite inválido."
+                    )
+            );
+
+    Usuario aluno = usuarioRepository
+            .findById(alunoId)
+            .orElseThrow(() ->
+                    new IllegalArgumentException(
+                            "Aluno não encontrado."
+                    )
+            );
+
+    AlunoTurma vinculo = alunoTurmaRepository
+            .findByTurmaIdAndAlunoId(
+                    turma.getId(),
+                    alunoId
+            )
+            .orElse(null);
+
+    if (vinculo != null) {
+        if ("APROVADO".equals(vinculo.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Você já participa desta turma."
+            );
+        }
+
+        if ("PENDENTE".equals(vinculo.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Sua solicitação já está pendente."
+            );
+        }
+    } else {
+        vinculo = new AlunoTurma();
         vinculo.setTurma(turma);
         vinculo.setAluno(aluno);
-        vinculo.setStatus("PENDENTE");
-        
-        alunoTurmaRepository.save(vinculo);
     }
+
+    vinculo.setStatus("PENDENTE");
+    alunoTurmaRepository.save(vinculo);
+}
+
 
     public List<AlunoTurma> listarAlunosPorStatus(Long turmaId, String status) {
         return alunoTurmaRepository.findByTurmaIdAndStatus(turmaId, status);

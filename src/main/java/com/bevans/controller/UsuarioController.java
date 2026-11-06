@@ -1,7 +1,5 @@
 package com.bevans.controller;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bevans.dto.EnderecoRequest;
-import com.bevans.model.Presenca;
 import com.bevans.model.Usuario;
 import com.bevans.repository.PresencaRepository;
 import com.bevans.repository.UsuarioRepository;
@@ -62,19 +59,30 @@ public class UsuarioController {
         }
     }
 
-    @Operation(summary = "Listar Passageiros", description = "Retorna todos os passageiros ativos e o status de presença do dia.")
-    @Transactional(readOnly = true)
-    @GetMapping("/passageiros")
-    public ResponseEntity<List<PassageiroDTO>> listarPassageiros() {
-        LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
-        List<Usuario> passageiros = usuarioRepository.findByTipo("PASSAGEIRO");
-        return ResponseEntity.ok(passageiros.stream().map(u -> {
-            Long uid = u.getId();
-            if (uid == null) return new PassageiroDTO(u, null);
-            Presenca p = presencaRepository.findByUsuarioIdAndData(uid, hoje);
-            return new PassageiroDTO(u, (p != null) ? p.getStatus() : null);
-        }).collect(Collectors.toList()));
-    }
+@Operation(
+    summary = "Listar Passageiros",
+    description = "Retorna todos os passageiros cadastrados."
+)
+@Transactional(readOnly = true)
+@GetMapping("/passageiros")
+public ResponseEntity<List<PassageiroDTO>>
+listarPassageiros() {
+
+    List<Usuario> passageiros =
+            usuarioRepository.findByTipo("PASSAGEIRO");
+
+    return ResponseEntity.ok(
+            passageiros.stream()
+                    .map(usuario ->
+                            new PassageiroDTO(
+                                    usuario,
+                                    null
+                            )
+                    )
+                    .collect(Collectors.toList())
+    );
+}
+
 
     @Operation(summary = "Buscar Motorista", description = "Busca o perfil do motorista vinculado ao sistema.")
     @GetMapping("/motorista")

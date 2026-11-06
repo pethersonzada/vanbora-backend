@@ -206,8 +206,29 @@ public class RotaService {
                 continue;
             }
 
-            Double latFinal = aluno.getLatitude();
-            Double lonFinal = aluno.getLongitude();
+            
+Endereco enderecoEscolhido = isVolta
+        ? p.getEnderecoVolta()
+        : p.getEnderecoIda();
+
+// Compatibilidade com as presenças antigas.
+if (enderecoEscolhido == null) {
+    enderecoEscolhido = p.getEndereco();
+}
+
+// Uma confirmação válida para o sentido
+// precisa possuir um endereço.
+if (enderecoEscolhido == null) {
+    continue;
+}
+
+Double latFinal = enderecoEscolhido.getLatitude();
+Double lonFinal = enderecoEscolhido.getLongitude();
+
+if (!coordenadasValidas(latFinal, lonFinal)) {
+    continue;
+}
+
 
             // Priorizar o endereço informado na presença
 

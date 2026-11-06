@@ -1,3 +1,4 @@
+
 package com.bevans.controller;
 
 import java.time.LocalDate;
@@ -6,17 +7,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
+import com.bevans.model.Endereco;
 import com.bevans.model.Presenca;
 import com.bevans.model.Turma;
 import com.bevans.model.Usuario;
 import com.bevans.repository.PresencaRepository;
 import com.bevans.service.TurmaService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-@Tag(name = "4. Gestão de Turmas", description = "Endpoints para gerenciamento de rotas e turnos")
+@Tag(
+    name = "4. Gestão de Turmas",
+    description = "Turmas, passageiros e convites"
+)
 @RestController
 @RequestMapping("/turmas")
 @CrossOrigin(origins = "*")
@@ -25,113 +34,336 @@ public class TurmaController {
     private final TurmaService turmaService;
     private final PresencaRepository presencaRepository;
 
-    public TurmaController(TurmaService turmaService, PresencaRepository presencaRepository) {
+    public TurmaController(
+            TurmaService turmaService,
+            PresencaRepository presencaRepository
+    ) {
         this.turmaService = turmaService;
         this.presencaRepository = presencaRepository;
     }
 
-    @Operation(summary = "Criar Turma", description = "Cadastra uma nova rota/turno para o motorista.")
+    private Map<String, Object> resumirEndereco(
+            Endereco endereco
+    ) {
+        Map<String, Object> resultado = new HashMap<>();
+
+        if (endereco == null) {
+            return resultado;
+        }
+
+        resultado.put("id", endereco.getId());
+        resultado.put("apelido", endereco.getApelido());
+        resultado.put("rua", endereco.getRua());
+        resultado.put("numero", endereco.getNumero());
+        resultado.put("bairro", endereco.getBairro());
+        resultado.put("latitude", endereco.getLatitude());
+        resultado.put("longitude", endereco.getLongitude());
+
+        return resultado;
+    }
+
+    private String enderecoCompleto(
+            Endereco endereco
+    ) {
+        if (endereco == null) return null;
+
+        return (
+                (endereco.getRua() == null
+                        ? ""
+                        : endereco.getRua())
+                + ", "
+                + (endereco.getNumero() == null
+                        ? "S/N"
+                        : endereco.getNumero())
+                + " - "
+                + (endereco.getBairro() == null
+                        ? ""
+                        : endereco.getBairro())
+        );
+    }
+
+    @Operation(summary = "Criar Turma")
     @PostMapping
-    public ResponseEntity<Turma> criarTurma(@RequestBody Turma turma) {
-        return ResponseEntity.ok(turmaService.criarTurma(turma));
+    public ResponseEntity<Turma> criarTurma(
+            @RequestBody Turma turma
+    ) {
+        return ResponseEntity.ok(
+                turmaService.criarTurma(turma)
+        );
     }
 
     @Operation(summary = "Listar Turmas do Motorista")
     @GetMapping("/motorista/{motoristaId}")
-    public ResponseEntity<List<Turma>> listarPorMotorista(@PathVariable Long motoristaId) {
-        return ResponseEntity.ok(turmaService.listarTurmasPorMotorista(motoristaId));
+    public ResponseEntity<List<Turma>> listarPorMotorista(
+            @PathVariable Long motoristaId
+    ) {
+        return ResponseEntity.ok(
+                turmaService.listarTurmasPorMotorista(
+                        motoristaId
+                )
+        );
+    }
+
+    @Operation(summary = "Listar Turmas do Passageiro")
+    @GetMapping("/usuario/{usuarioId}/todas")
+    public ResponseEntity<List<Turma>> listarTurmasDoAluno(
+            @PathVariable Long usuarioId
+    ) {
+        return ResponseEntity.ok(
+                turmaService.listarTurmasDoAluno(
+                        usuarioId
+                )
+        );
+    }
+
+    // Mantido para compatibilidade.
+    @Operation(summary = "Buscar Turma do Aluno")
+    @GetMapping("/usuario/{usuarioId}")
+    public ResponseEntity<Object> buscarTurmaPorUsuario(
+            @PathVariable Long usuarioId
+    ) {
+        Turma turma =
+                turmaService.buscarTurmaPorAlunoId(
+                        usuarioId
+                );
+
+        if (turma == null) {
+            return ResponseEntity.status(404).body(
+                    Map.of(
+                        "erro",
+                        "Aluno não vinculado a nenhuma turma."
+                    )
+            );
+        }
+
+        return ResponseEntity.ok(turma);
     }
 
     @Operation(summary = "Listar Passageiros da Turma")
     @GetMapping("/{turmaId}/passageiros")
-    public ResponseEntity<Object> listarPassageirosDaTurma(@PathVariable Long turmaId) {
-        List<Usuario> passageiros = turmaService.listarPassageirosPorTurma(turmaId);
-        if (passageiros.isEmpty()) return ResponseEntity.ok(List.of());
+    @Transactional(readOnly = true)
+    public ResponseEntity<Object> listarPassageirosDaTurma(
+            @PathVariable Long turmaId
+    ) {
+        List<Usuario> passageiros =
+                turmaService.listarPassageirosPorTurma(
+                        turmaId
+                );
 
-        LocalDate hoje = LocalDate.now(ZoneId.of("America/Recife"));
-        List<Long> ids = passageiros.stream().map(Usuario::getId).collect(Collectors.toList());
-        List<Presenca> presencas = presencaRepository.findByUsuarioIdInAndData(ids, hoje);
+        if (passageiros.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
 
-        Map<Long, Presenca> mapPresencas = presencas.stream()
-                .collect(Collectors.toMap(p -> p.getUsuario().getId(), p -> p));
+        LocalDate hoje = LocalDate.now(
+                ZoneId.of("America/Recife")
+        );
 
-        List<Map<String, Object>> resultado = passageiros.stream().map(aluno -> {
-            Presenca p = mapPresencas.get(aluno.getId());
-            String endereco = aluno.getEnderecoCompleto();
-            if (p != null && p.getEndereco() != null) {
-                endereco = p.getEndereco().getRua() + ", " + p.getEndereco().getNumero() + " - " + p.getEndereco().getBairro();
-            }
+        List<Presenca> presencas =
+                presencaRepository.findByDataAndTurmaId(
+                        hoje, turmaId
+                );
 
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", aluno.getId());
-            map.put("nome", aluno.getNome());
-            map.put("telefone", aluno.getTelefone());
-            map.put("enderecoCompleto", endereco);
-            map.put("status", p != null ? p.getStatus() : null);
-            return map;
-        }).collect(Collectors.toList());
+        Map<Long, Presenca> mapa = presencas
+                .stream()
+                .collect(Collectors.toMap(
+                        p -> p.getUsuario().getId(),
+                        p -> p
+                ));
+
+        List<Map<String, Object>> resultado =
+                passageiros.stream().map(aluno -> {
+
+                    Presenca presenca =
+                            mapa.get(aluno.getId());
+
+                    Endereco ida = null;
+                    Endereco volta = null;
+
+                    if (presenca != null) {
+                        ida = presenca.getEnderecoIda();
+                        volta = presenca.getEnderecoVolta();
+
+                        String status =
+                                presenca.getStatus();
+
+                        // Compatibilidade com dados antigos.
+                        if (ida == null
+                                && ("IDA".equals(status)
+                                || "AMBOS".equals(status))) {
+                            ida = presenca.getEndereco();
+                        }
+
+                        if (volta == null
+                                && ("VOLTA".equals(status)
+                                || "AMBOS".equals(status))) {
+                            volta = presenca.getEndereco();
+                        }
+                    }
+
+                    String enderecoAntigo =
+                            aluno.getEnderecoCompleto();
+
+                    if (ida != null) {
+                        enderecoAntigo =
+                                enderecoCompleto(ida);
+                    } else if (volta != null) {
+                        enderecoAntigo =
+                                enderecoCompleto(volta);
+                    }
+
+                    Map<String, Object> item =
+                            new HashMap<>();
+
+                    item.put("id", aluno.getId());
+                    item.put("nome", aluno.getNome());
+                    item.put(
+                        "telefone",
+                        aluno.getTelefone()
+                    );
+
+                    item.put(
+                        "status",
+                        presenca != null
+                            ? presenca.getStatus()
+                            : null
+                    );
+
+                    // Campo usado pela interface antiga.
+                    item.put(
+                        "enderecoCompleto",
+                        enderecoAntigo
+                    );
+
+                    // Novos campos da confirmação.
+                    item.put(
+                        "enderecoIda",
+                        ida != null
+                            ? resumirEndereco(ida)
+                            : null
+                    );
+
+                    item.put(
+                        "enderecoVolta",
+                        volta != null
+                            ? resumirEndereco(volta)
+                            : null
+                    );
+
+                    return item;
+                }).collect(Collectors.toList());
 
         return ResponseEntity.ok(resultado);
     }
 
     @Operation(summary = "Adicionar Aluno à Turma")
     @PostMapping("/{turmaId}/alunos/{alunoId}")
-    public ResponseEntity<String> adicionarAlunoTurma(@PathVariable Long turmaId, @PathVariable Long alunoId) {
-        turmaService.adicionarAluno(turmaId, alunoId);
-        return ResponseEntity.ok("Aluno vinculado com sucesso.");
+    public ResponseEntity<String> adicionarAlunoTurma(
+            @PathVariable Long turmaId,
+            @PathVariable Long alunoId
+    ) {
+        turmaService.adicionarAluno(
+                turmaId, alunoId
+        );
+
+        return ResponseEntity.ok(
+                "Aluno vinculado com sucesso."
+        );
     }
 
     @Operation(summary = "Remover Aluno da Turma")
     @DeleteMapping("/{turmaId}/alunos/{alunoId}")
-    public ResponseEntity<String> removerAlunoTurma(@PathVariable Long turmaId, @PathVariable Long alunoId) {
-        turmaService.removerAluno(turmaId, alunoId);
-        return ResponseEntity.ok("Aluno removido com sucesso.");
-    }
+    public ResponseEntity<String> removerAlunoTurma(
+            @PathVariable Long turmaId,
+            @PathVariable Long alunoId
+    ) {
+        turmaService.removerAluno(
+                turmaId, alunoId
+        );
 
-    @Operation(summary = "Buscar Turma do Aluno")
-    @GetMapping("/usuario/{usuarioId}")
-    public ResponseEntity<Object> buscarTurmaPorUsuario(@PathVariable Long usuarioId) {
-        Turma turma = turmaService.buscarTurmaPorAlunoId(usuarioId);
-        if (turma == null) return ResponseEntity.status(404).body(Map.of("erro", "Aluno não vinculado a nenhuma turma."));
-        return ResponseEntity.ok(turma);
+        return ResponseEntity.ok(
+                "Aluno removido com sucesso."
+        );
     }
 
     @Operation(summary = "Atualizar Turma")
     @PutMapping("/{turmaId}")
-    public ResponseEntity<Turma> atualizarTurma(@PathVariable Long turmaId, @RequestBody Turma turmaAtualizada) {
-        return ResponseEntity.ok(turmaService.atualizarTurma(turmaId, turmaAtualizada));
+    public ResponseEntity<Turma> atualizarTurma(
+            @PathVariable Long turmaId,
+            @RequestBody Turma turmaAtualizada
+    ) {
+        return ResponseEntity.ok(
+                turmaService.atualizarTurma(
+                        turmaId,
+                        turmaAtualizada
+                )
+        );
     }
 
     @Operation(summary = "Solicitar Entrada na Turma")
     @PostMapping("/entrar/{alunoId}")
-    public ResponseEntity<String> solicitarEntradaTurma(@PathVariable Long alunoId, @RequestParam String codigo) {
-        turmaService.solicitarEntradaPorCodigo(alunoId, codigo);
-        return ResponseEntity.ok("Solicitação enviada com sucesso! Aguarde a aprovação do motorista.");
+    public ResponseEntity<String> solicitarEntradaTurma(
+            @PathVariable Long alunoId,
+            @RequestParam String codigo
+    ) {
+        turmaService.solicitarEntradaPorCodigo(
+                alunoId, codigo
+        );
+
+        return ResponseEntity.ok(
+                "Solicitação enviada. Aguarde aprovação."
+        );
     }
 
     @Operation(summary = "Listar Alunos Pendentes")
     @GetMapping("/{turmaId}/pendentes")
-    public ResponseEntity<Object> listarAlunosPendentes(@PathVariable Long turmaId) {
-        return ResponseEntity.ok(turmaService.listarAlunosPorStatus(turmaId, "PENDENTE"));
+    public ResponseEntity<Object> listarAlunosPendentes(
+            @PathVariable Long turmaId
+    ) {
+        return ResponseEntity.ok(
+                turmaService.listarAlunosPorStatus(
+                        turmaId,
+                        "PENDENTE"
+                )
+        );
     }
 
-    @Operation(summary = "Aprovar ou Rejeitar Aluno")
+    @Operation(summary = "Analisar Solicitação")
     @PutMapping("/analisar/{vinculoId}")
-    public ResponseEntity<String> analisarSolicitacaoAluno(@PathVariable Long vinculoId, @RequestParam String status) {
-        turmaService.analisarSolicitacao(vinculoId, status.toUpperCase());
-        return ResponseEntity.ok("Status atualizado com sucesso.");
+    public ResponseEntity<String> analisarSolicitacaoAluno(
+            @PathVariable Long vinculoId,
+            @RequestParam String status
+    ) {
+        turmaService.analisarSolicitacao(
+                vinculoId,
+                status.toUpperCase()
+        );
+
+        return ResponseEntity.ok(
+                "Status atualizado com sucesso."
+        );
     }
 
     @Operation(summary = "Regenerar Código de Convite")
     @PutMapping("/{turmaId}/regenerar-codigo")
-    public ResponseEntity<Turma> regenerarCodigoConvite(@PathVariable Long turmaId) {
-        return ResponseEntity.ok(turmaService.regenerarCodigoConvite(turmaId));
+    public ResponseEntity<Turma> regenerarCodigoConvite(
+            @PathVariable Long turmaId
+    ) {
+        return ResponseEntity.ok(
+                turmaService.regenerarCodigoConvite(
+                        turmaId
+                )
+        );
     }
 
     @Operation(summary = "Excluir Turma")
     @DeleteMapping("/{turmaId}")
-    public ResponseEntity<String> excluirTurma(@PathVariable Long turmaId) {
+    public ResponseEntity<String> excluirTurma(
+            @PathVariable Long turmaId
+    ) {
         turmaService.deletarTurma(turmaId);
-        return ResponseEntity.ok("Turma excluída com sucesso.");
+
+        return ResponseEntity.ok(
+                "Turma excluída com sucesso."
+        );
     }
 }
