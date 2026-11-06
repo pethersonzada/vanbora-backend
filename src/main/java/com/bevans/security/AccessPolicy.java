@@ -60,6 +60,15 @@ public class AccessPolicy {
         return u != null && "MOTORISTA".equals(u.getTipo());
     }
 
+    public boolean canStartRota(Map<String, Object> payload) {
+        if (payload == null || payload.get("turmaId") == null) return false;
+        try {
+            return driverOfTurma(Long.valueOf(payload.get("turmaId").toString()));
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     public boolean canCreateTurma(Turma turma) {
         return turma != null && turma.getMotorista() != null
                 && isMotorista() && own(turma.getMotorista().getId());
