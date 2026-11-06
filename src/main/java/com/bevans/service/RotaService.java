@@ -1,3 +1,4 @@
+
 package com.bevans.service;
 
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ import com.bevans.model.Usuario;
 import com.bevans.repository.EnderecoRepository;
 import com.bevans.repository.PresencaRepository;
 import com.bevans.repository.TurmaRepository;
+
 import com.google.ortools.Loader;
 import com.google.ortools.constraintsolver.Assignment;
 import com.google.ortools.constraintsolver.FirstSolutionStrategy;
@@ -29,7 +31,6 @@ public class RotaService {
 
     private final PresencaRepository presencaRepository;
     private final TurmaRepository turmaRepository;
-    private final EnderecoRepository enderecoRepository;
 
     static {
         Loader.loadNativeLibraries();
@@ -42,7 +43,6 @@ public class RotaService {
     ) {
         this.presencaRepository = presencaRepository;
         this.turmaRepository = turmaRepository;
-        this.enderecoRepository = enderecoRepository;
     }
 
     private double calcularDistancia(
@@ -62,10 +62,12 @@ public class RotaService {
                 * Math.sin(dLon / 2)
                 * Math.sin(dLon / 2);
 
-        return R * (2 * Math.atan2(
-                Math.sqrt(a),
-                Math.sqrt(1 - a)
-        ));
+        return R * (
+                2 * Math.atan2(
+                        Math.sqrt(a),
+                        Math.sqrt(1 - a)
+                )
+        );
     }
 
     private boolean coordenadasValidas(
@@ -103,43 +105,73 @@ public class RotaService {
         }
 
         if ("IDA".equals(sen)
-                && ("IDA".equals(st) || "SO_IDA".equals(st))) {
+                && ("IDA".equals(st)
+                || "SO_IDA".equals(st))) {
             return true;
         }
 
         if ("VOLTA".equals(sen)
-                && ("VOLTA".equals(st) || "SO_VOLTA".equals(st))) {
+                && ("VOLTA".equals(st)
+                || "SO_VOLTA".equals(st))) {
             return true;
         }
 
         return st.equals(sen);
     }
 
+    private Endereco obterEnderecoPorSentido(
+            Presenca presenca,
+            boolean isVolta
+    ) {
+        // Cada sentido utiliza seu próprio endereço.
+        Endereco endereco = isVolta
+                ? presenca.getEnderecoVolta()
+                : presenca.getEnderecoIda();
+
+        if (endereco != null) {
+            return endereco;
+        }
+
+        // Fallback somente para registros históricos
+        // que ainda não possuem endereços por sentido.
+        if (presenca.getTurma() == null) {
+            return presenca.getEndereco();
+        }
+
+        return null;
+    }
+
     @Async("orToolsExecutor")
-    public CompletableFuture<List<PassageiroRotaDTO>> otimizarRota(
+    public CompletableFuture<List<PassageiroRotaDTO>>
+    otimizarRota(
             String sentido,
             Long turmaId
     ) {
-
         if (sentido == null
                 || (!sentido.equalsIgnoreCase("IDA")
                 && !sentido.equalsIgnoreCase("VOLTA"))) {
-
             throw new IllegalArgumentException(
                     "Sentido inválido. Informe IDA ou VOLTA."
             );
         }
 
-        boolean isVolta = sentido.equalsIgnoreCase("VOLTA");
+        if (turmaId == null) {
+            throw new IllegalArgumentException(
+                    "O ID da turma é obrigatório."
+            );
+        }
 
-        // 1. Buscar a turma
+        boolean isVolta =
+                sentido.equalsIgnoreCase("VOLTA");
+
+        // 1. Buscar a turma.
 
         Turma turma = turmaRepository.findById(turmaId)
                 .orElseThrow(() ->
-                        new RuntimeException("Turma não encontrada.")
+                        new RuntimeException(
+                                "Turma não encontrada."
+                        )
                 );
-
-        // 2. Obter o motorista vinculado à turma
 
         Usuario motorista = turma.getMotorista();
 
@@ -149,7 +181,7 @@ public class RotaService {
             );
         }
 
-        // 3. Buscar presenças do dia somente da turma
+        // 2. Buscar presenças apenas da turma selecionada.
 
         LocalDate hoje = LocalDate.now(
                 ZoneId.of("America/Recife")
@@ -161,15 +193,13 @@ public class RotaService {
                         turmaId
                 );
 
-        // 4. Preparar listas de passageiros e coordenadas
-
         List<PassageiroRotaDTO> passageirosDTO =
                 new ArrayList<>();
 
         List<Double> latsList = new ArrayList<>();
         List<Double> lonsList = new ArrayList<>();
 
-        // 5. Validar coordenadas da origem
+        // 3. Definir a origem cadastrada para a turma.
 
         Double origemLat = turma.getOrigemLatitude();
         Double origemLon = turma.getOrigemLongitude();
@@ -181,126 +211,85 @@ public class RotaService {
 
         if (!coordenadasValidas(origemLat, origemLon)) {
             throw new RuntimeException(
-                    "A turma não possui coordenadas de origem válidas "
-                    + "e o motorista não possui localização disponível."
+                    "A turma não possui coordenadas de origem "
+                    + "válidas e o motorista não possui "
+                    + "localização disponível."
             );
         }
 
         latsList.add(origemLat);
         lonsList.add(origemLon);
 
-        // 6. Filtrar e validar passageiros
+        // 4. Filtrar passageiros pelo sentido da viagem.
 
-        for (Presenca p : presencasDoDia) {
+        for (Presenca presenca : presencasDoDia) {
 
-            if (p.getUsuario() == null || p.getStatus() == null) {
+            if (presenca.getUsuario() == null
+                    || presenca.getStatus() == null) {
                 continue;
             }
 
-            Usuario aluno = p.getUsuario();
-
             if (!presencaValidaParaSentido(
-                    p.getStatus(),
+                    presenca.getStatus(),
                     sentido
             )) {
                 continue;
             }
 
-            
-Endereco enderecoEscolhido = isVolta
-        ? p.getEnderecoVolta()
-        : p.getEnderecoIda();
+            Usuario aluno = presenca.getUsuario();
 
-// Compatibilidade com as presenças antigas.
-if (enderecoEscolhido == null) {
-    enderecoEscolhido = p.getEndereco();
-}
+            // 5. Selecionar o endereço correspondente.
+            // IDA: embarque.
+            // VOLTA: desembarque.
 
-// Uma confirmação válida para o sentido
-// precisa possuir um endereço.
-if (enderecoEscolhido == null) {
-    continue;
-}
+            Endereco enderecoEscolhido =
+                    obterEnderecoPorSentido(
+                            presenca,
+                            isVolta
+                    );
 
-Double latFinal = enderecoEscolhido.getLatitude();
-Double lonFinal = enderecoEscolhido.getLongitude();
+            if (enderecoEscolhido == null) {
+                continue;
+            }
 
-if (!coordenadasValidas(latFinal, lonFinal)) {
-    continue;
-}
+            Double latFinal =
+                    enderecoEscolhido.getLatitude();
 
+            Double lonFinal =
+                    enderecoEscolhido.getLongitude();
 
-            // Priorizar o endereço informado na presença
+            // Endereços inválidos não entram na rota.
+            // Nunca substituir pelo endereço de outro sentido.
 
-            if (p.getEndereco() != null
-                    && coordenadasValidas(
-                            p.getEndereco().getLatitude(),
-                            p.getEndereco().getLongitude()
-                    )) {
-
-                latFinal = p.getEndereco().getLatitude();
-                lonFinal = p.getEndereco().getLongitude();
-
-            } else if (!coordenadasValidas(
+            if (!coordenadasValidas(
                     latFinal,
                     lonFinal
             )) {
-
-                // Procurar endereço alternativo do aluno
-
-                List<Endereco> enderecosAluno =
-                        enderecoRepository.findByUsuarioId(
-                                aluno.getId()
-                        );
-
-                if (enderecosAluno != null) {
-
-                    for (Endereco end : enderecosAluno) {
-
-                        if (coordenadasValidas(
-                                end.getLatitude(),
-                                end.getLongitude()
-                        )) {
-
-                            latFinal = end.getLatitude();
-                            lonFinal = end.getLongitude();
-
-                            break;
-                        }
-                    }
-                }
+                continue;
             }
 
-            // Adicionar somente passageiros com coordenadas válidas
+            passageirosDTO.add(
+                    new PassageiroRotaDTO(
+                            aluno.getId(),
+                            aluno.getNome(),
+                            latFinal,
+                            lonFinal
+                    )
+            );
 
-            if (coordenadasValidas(
-                    latFinal,
-                    lonFinal
-            )) {
-
-                passageirosDTO.add(
-                        new PassageiroRotaDTO(
-                                aluno.getId(),
-                                aluno.getNome(),
-                                latFinal,
-                                lonFinal
-                        )
-                );
-
-                latsList.add(latFinal);
-                lonsList.add(lonFinal);
-            }
+            latsList.add(latFinal);
+            lonsList.add(lonFinal);
         }
 
-        // 7. Verificar se existem passageiros válidos
+        // 6. Nenhum passageiro confirmado para este sentido.
 
         if (passageirosDTO.isEmpty()) {
-                return CompletableFuture.completedFuture(
-                        new ArrayList<PassageiroRotaDTO>()
-                        );
+            return CompletableFuture.completedFuture(
+                    new ArrayList<>()
+            );
         }
 
-        // 8. Validar coordenadas do destino
+        // 7. Validar destino da turma.
 
         Double destinoLat = turma.getDestinoLatitude();
         Double destinoLon = turma.getDestinoLongitude();
@@ -309,17 +298,16 @@ if (!coordenadasValidas(latFinal, lonFinal)) {
                 destinoLat,
                 destinoLon
         )) {
-
             throw new RuntimeException(
-                    "A turma não possui coordenadas de destino válidas. "
-                    + "Configure o destino antes de otimizar a rota."
+                    "A turma não possui coordenadas de "
+                    + "destino válidas."
             );
         }
 
         latsList.add(destinoLat);
         lonsList.add(destinoLon);
 
-        // 9. Converter coordenadas para arrays
+        // 8. Converter coordenadas em arrays.
 
         int n = latsList.size();
 
@@ -331,24 +319,29 @@ if (!coordenadasValidas(latFinal, lonFinal)) {
             lons[i] = lonsList.get(i);
         }
 
-        // 10. Calcular matriz de distâncias
+        // 9. Calcular matriz de distâncias.
 
         long[][] distancias = new long[n][n];
 
         for (int i = 0; i < n; i++) {
-
             for (int j = 0; j < n; j++) {
-
-                distancias[i][j] = (long) calcularDistancia(
-                        lats[i],
-                        lons[i],
-                        lats[j],
-                        lons[j]
-                );
+                distancias[i][j] =
+                        (long) calcularDistancia(
+                                lats[i],
+                                lons[i],
+                                lats[j],
+                                lons[j]
+                        );
             }
         }
 
-        // 11. Definir origem e destino conforme o sentido
+        // 10. Sentido da viagem.
+        //
+        // IDA:
+        // origem -> passageiros -> destino
+        //
+        // VOLTA:
+        // destino -> passageiros -> origem
 
         int[] inicios = {
             isVolta ? n - 1 : 0
@@ -366,30 +359,44 @@ if (!coordenadasValidas(latFinal, lonFinal)) {
                         finais
                 );
 
-        // 12. Configurar modelo de otimização
+        RoutingModel routing =
+                new RoutingModel(manager);
 
-        RoutingModel routing = new RoutingModel(manager);
+        // 11. Configurar custo de deslocamento.
+
+        int transitCallbackIndex =
+                routing.registerTransitCallback(
+                        (fromIndex, toIndex) -> {
+                            int fromNode =
+                                    manager.indexToNode(
+                                            fromIndex
+                                    );
+
+                            int toNode =
+                                    manager.indexToNode(
+                                            toIndex
+                                    );
+
+                            return distancias[fromNode][toNode];
+                        }
+                );
 
         routing.setArcCostEvaluatorOfAllVehicles(
-                routing.registerTransitCallback(
-                        (f, t) -> distancias[
-                                manager.indexToNode(f)
-                        ][
-                                manager.indexToNode(t)
-                        ]
-                )
+                transitCallbackIndex
         );
 
-        // 13. Executar otimização
+        // 12. Executar algoritmo OR-Tools.
 
-        Assignment solution = routing.solveWithParameters(
-                main.defaultRoutingSearchParameters()
-                        .toBuilder()
-                        .setFirstSolutionStrategy(
-                                FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC
-                        )
-                        .build()
-        );
+        Assignment solution =
+                routing.solveWithParameters(
+                        main.defaultRoutingSearchParameters()
+                                .toBuilder()
+                                .setFirstSolutionStrategy(
+                                        FirstSolutionStrategy.Value
+                                                .PATH_CHEAPEST_ARC
+                                )
+                                .build()
+                );
 
         if (solution == null) {
             throw new RuntimeException(
@@ -398,7 +405,7 @@ if (!coordenadasValidas(latFinal, lonFinal)) {
             );
         }
 
-        // 14. Montar rota otimizada
+        // 13. Montar sequência de passageiros otimizada.
 
         List<PassageiroRotaDTO> rotaOtimizada =
                 new ArrayList<>();
@@ -406,11 +413,10 @@ if (!coordenadasValidas(latFinal, lonFinal)) {
         long index = routing.start(0);
 
         while (!routing.isEnd(index)) {
-
             int nodeIndex = manager.indexToNode(index);
 
+            // Ignorar nós de origem e destino.
             if (nodeIndex > 0 && nodeIndex < n - 1) {
-
                 rotaOtimizada.add(
                         passageirosDTO.get(nodeIndex - 1)
                 );
@@ -421,7 +427,7 @@ if (!coordenadasValidas(latFinal, lonFinal)) {
             );
         }
 
-        // 15. Retornar resultado
+        // 14. Retornar ordem de paradas.
 
         return CompletableFuture.completedFuture(
                 rotaOtimizada
