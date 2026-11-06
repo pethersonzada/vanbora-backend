@@ -2,6 +2,7 @@ package com.bevans.security;
 
 import java.util.List;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -20,6 +21,16 @@ public class SecurityConfig {
 
     public SecurityConfig(FirebaseAuthenticationFilter firebaseFilter) {
         this.firebaseFilter = firebaseFilter;
+    }
+
+    // Executar o filtro Firebase apenas dentro da cadeia Spring Security.
+    @Bean
+    public FilterRegistrationBean<FirebaseAuthenticationFilter> firebaseFilterRegistration(
+            FirebaseAuthenticationFilter filter) {
+        FilterRegistrationBean<FirebaseAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
