@@ -1,6 +1,8 @@
 
 package com.bevans.controller;
 
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -84,6 +86,7 @@ public class TurmaController {
 
     @Operation(summary = "Criar Turma")
     @PostMapping
+    @PreAuthorize("@access.canCreateTurma(#p0)")
     public ResponseEntity<Turma> criarTurma(
             @RequestBody Turma turma
     ) {
@@ -94,6 +97,7 @@ public class TurmaController {
 
     @Operation(summary = "Listar Turmas do Motorista")
     @GetMapping("/motorista/{motoristaId}")
+    @PreAuthorize("@access.isMotorista() and @access.own(#p0)")
     public ResponseEntity<List<Turma>> listarPorMotorista(
             @PathVariable Long motoristaId
     ) {
@@ -106,6 +110,7 @@ public class TurmaController {
 
     @Operation(summary = "Listar Turmas do Passageiro")
     @GetMapping("/usuario/{usuarioId}/todas")
+    @PreAuthorize("@access.own(#p0)")
     public ResponseEntity<List<Turma>> listarTurmasDoAluno(
             @PathVariable Long usuarioId
     ) {
@@ -119,6 +124,7 @@ public class TurmaController {
     // Mantido para compatibilidade.
     @Operation(summary = "Buscar Turma do Aluno")
     @GetMapping("/usuario/{usuarioId}")
+    @PreAuthorize("@access.own(#p0)")
     public ResponseEntity<Object> buscarTurmaPorUsuario(
             @PathVariable Long usuarioId
     ) {
@@ -142,6 +148,7 @@ public class TurmaController {
     @Operation(summary = "Listar Passageiros da Turma")
     @GetMapping("/{turmaId}/passageiros")
     @Transactional(readOnly = true)
+    @PreAuthorize("@access.driverOfTurma(#p0)")
     public ResponseEntity<Object> listarPassageirosDaTurma(
             @PathVariable Long turmaId
     ) {
@@ -257,6 +264,7 @@ public class TurmaController {
 
     @Operation(summary = "Adicionar Aluno à Turma")
     @PostMapping("/{turmaId}/alunos/{alunoId}")
+    @PreAuthorize("@access.driverOfTurma(#p0)")
     public ResponseEntity<String> adicionarAlunoTurma(
             @PathVariable Long turmaId,
             @PathVariable Long alunoId
@@ -272,6 +280,7 @@ public class TurmaController {
 
     @Operation(summary = "Remover Aluno da Turma")
     @DeleteMapping("/{turmaId}/alunos/{alunoId}")
+    @PreAuthorize("@access.driverOfTurma(#p0)")
     public ResponseEntity<String> removerAlunoTurma(
             @PathVariable Long turmaId,
             @PathVariable Long alunoId
@@ -287,6 +296,7 @@ public class TurmaController {
 
     @Operation(summary = "Atualizar Turma")
     @PutMapping("/{turmaId}")
+    @PreAuthorize("@access.driverOfTurma(#p0)")
     public ResponseEntity<Turma> atualizarTurma(
             @PathVariable Long turmaId,
             @RequestBody Turma turmaAtualizada
@@ -301,6 +311,7 @@ public class TurmaController {
 
     @Operation(summary = "Solicitar Entrada na Turma")
     @PostMapping("/entrar/{alunoId}")
+    @PreAuthorize("@access.own(#p0)")
     public ResponseEntity<String> solicitarEntradaTurma(
             @PathVariable Long alunoId,
             @RequestParam String codigo
@@ -316,6 +327,7 @@ public class TurmaController {
 
     @Operation(summary = "Listar Alunos Pendentes")
     @GetMapping("/{turmaId}/pendentes")
+    @PreAuthorize("@access.driverOfTurma(#p0)")
     public ResponseEntity<Object> listarAlunosPendentes(
             @PathVariable Long turmaId
     ) {
@@ -329,6 +341,7 @@ public class TurmaController {
 
     @Operation(summary = "Analisar Solicitação")
     @PutMapping("/analisar/{vinculoId}")
+    @PreAuthorize("@access.driverOfVinculo(#p0)")
     public ResponseEntity<String> analisarSolicitacaoAluno(
             @PathVariable Long vinculoId,
             @RequestParam String status
@@ -345,6 +358,7 @@ public class TurmaController {
 
     @Operation(summary = "Regenerar Código de Convite")
     @PutMapping("/{turmaId}/regenerar-codigo")
+    @PreAuthorize("@access.driverOfTurma(#p0)")
     public ResponseEntity<Turma> regenerarCodigoConvite(
             @PathVariable Long turmaId
     ) {
@@ -357,6 +371,7 @@ public class TurmaController {
 
     @Operation(summary = "Excluir Turma")
     @DeleteMapping("/{turmaId}")
+    @PreAuthorize("@access.driverOfTurma(#p0)")
     public ResponseEntity<String> excluirTurma(
             @PathVariable Long turmaId
     ) {
