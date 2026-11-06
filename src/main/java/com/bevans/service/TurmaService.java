@@ -113,10 +113,10 @@ public class TurmaService {
         return null;
     }
 
-    public Turma atualizarTurma(Long turmaId, Turma turmaAtualizada) {
+     public Turma atualizarTurma(Long turmaId, Turma turmaAtualizada) {
         Turma turma = turmaRepository.findById(turmaId)
                 .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
-        
+
         if (turmaAtualizada.getNome() != null && !turmaAtualizada.getNome().trim().isEmpty()) {
             turma.setNome(turmaAtualizada.getNome().trim());
         }
@@ -124,25 +124,65 @@ public class TurmaService {
             turma.setTurno(turmaAtualizada.getTurno().trim());
         }
 
-        if (turmaAtualizada.getDestinoNome() != null && !turmaAtualizada.getDestinoNome().equals(turma.getDestinoNome())) {
-            turma.setDestinoNome(turmaAtualizada.getDestinoNome());
-            try {
-                double[] coords = geocodingService.geocodificarEndereco(turmaAtualizada.getDestinoNome(), "Pernambuco");
-                turma.setDestinoLatitude(coords[0]);
-                turma.setDestinoLongitude(coords[1]);
-            } catch (Exception e) {}
+        boolean destinoNomeMudou = turmaAtualizada.getDestinoNome() != null
+                && !turmaAtualizada.getDestinoNome().equals(turma.getDestinoNome());
+
+        boolean origemNomeMudou = turmaAtualizada.getOrigemNome() != null
+                && !turmaAtualizada.getOrigemNome().equals(turma.getOrigemNome());
+
+        // O mapa envia coordenadas precisas; elas têm prioridade sobre geocodificação.
+        if (turmaAtualizada.getDestinoLatitude() != null
+                || turmaAtualizada.getDestinoLongitude() != null) {
+            validarCoordenadas(
+                    turmaAtualizada.getDestinoLatitude(),
+                    turmaAtualizada.getDestinoLongitude(),
+                    "destino");
+            turma.setDestinoLatitude(turmaAtualizada.getDestinoLatitude());
+            turma.setDestinoLongitude(turmaAtualizada.getDestinoLongitude());
+        } else if (destinoNomeMudou) {
+            double[] coords = geocodingService.geocodificarEndereco(
+                    turmaAtualizada.getDestinoNome(), "Pernambuco");
+            validarCoordenadas(coords[0], coords[1], "destino");
+            turma.setDestinoLatitude(coords[0]);
+            turma.setDestinoLongitude(coords[1]);
         }
 
-        if (turmaAtualizada.getOrigemNome() != null && !turmaAtualizada.getOrigemNome().equals(turma.getOrigemNome())) {
-            turma.setOrigemNome(turmaAtualizada.getOrigemNome());
-            try {
-                double[] coords = geocodingService.geocodificarEndereco(turmaAtualizada.getOrigemNome(), "Pernambuco");
-                turma.setOrigemLatitude(coords[0]);
-                turma.setOrigemLongitude(coords[1]);
-            } catch (Exception e) {}
+        if (turmaAtualizada.getDestinoNome() != null) {
+            turma.setDestinoNome(turmaAtualizada.getDestinoNome());
         }
-        
+
+        if (turmaAtualizada.getOrigemLatitude() != null
+                || turmaAtualizada.getOrigemLongitude() != null) {
+            validarCoordenadas(
+                    turmaAtualizada.getOrigemLatitude(),
+                    turmaAtualizada.getOrigemLongitude(),
+                    "origem");
+            turma.setOrigemLatitude(turmaAtualizada.getOrigemLatitude());
+            turma.setOrigemLongitude(turmaAtualizada.getOrigemLongitude());
+        } else if (origemNomeMudou) {
+            double[] coords = geocodingService.geocodificarEndereco(
+                    turmaAtualizada.getOrigemNome(), "Pernambuco");
+            validarCoordenadas(coords[0], coords[1], "origem");
+            turma.setOrigemLatitude(coords[0]);
+            turma.setOrigemLongitude(coords[1]);
+        }
+
+        if (turmaAtualizada.getOrigemNome() != null) {
+            turma.setOrigemNome(turmaAtualizada.getOrigemNome());
+        }
+
         return turmaRepository.save(turma);
+    }
+
+    private void validarCoordenadas(Double latitude, Double longitude, String campo) {
+        if (latitude == null || longitude == null
+                || !Double.isFinite(latitude) || !Double.isFinite(longitude)
+                || latitude < -90 || latitude > 90
+                || longitude < -180 || longitude > 180
+                || (latitude == 0 && longitude == 0)) {
+            throw new IllegalArgumentException(
+                    "Coordenadas de " + campo + " inválidas ou incompletas.");
+        }
     }
 
     public void solicitarEntradaPorCodigo(Long alunoId, String codigo) {
