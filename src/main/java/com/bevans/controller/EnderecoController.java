@@ -1,5 +1,7 @@
 package com.bevans.controller;
 
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -25,24 +27,28 @@ public class EnderecoController {
 
     @Operation(summary = "Cadastrar Endereço")
     @PostMapping("/usuario/{userId}")
+    @PreAuthorize("@access.own(#p0)")
     public ResponseEntity<Endereco> salvarEndereco(@PathVariable Long userId, @RequestBody Endereco novoEndereco) {
         return ResponseEntity.ok(enderecoService.cadastrarEndereco(userId, novoEndereco));
     }
 
     @Operation(summary = "Listar Endereços do Usuário")
     @GetMapping("/usuario/{userId}")
+    @PreAuthorize("@access.own(#p0)")
     public ResponseEntity<List<Endereco>> listarPorUsuario(@PathVariable Long userId) {
         return ResponseEntity.ok(enderecoService.listarPorUsuario(userId));
     }
 
     @Operation(summary = "Atualizar Endereço")
     @PutMapping("/{id}")
+    @PreAuthorize("@access.ownAddress(#p0)")
     public ResponseEntity<Endereco> atualizarEndereco(@PathVariable Long id, @RequestBody Endereco dadosAtualizados) {
         return ResponseEntity.ok(enderecoService.atualizarEndereco(id, dadosAtualizados));
     }
 
     @Operation(summary = "Excluir Endereço")
     @DeleteMapping("/{id}")
+    @PreAuthorize("@access.ownAddress(#p0)")
     public ResponseEntity<Void> excluirEndereco(@PathVariable Long id) {
         enderecoService.excluirEndereco(id);
         return ResponseEntity.ok().build();
