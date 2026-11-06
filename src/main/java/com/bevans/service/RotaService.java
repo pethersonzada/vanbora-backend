@@ -274,10 +274,9 @@ public class RotaService {
         // 7. Verificar se existem passageiros válidos
 
         if (passageirosDTO.isEmpty()) {
-            throw new RuntimeException(
-                    "Nenhum passageiro confirmado com endereço válido para "
-                    + sentido
-            );
+                return CompletableFuture.completedFuture(
+                        new ArrayList<PassageiroRotaDTO>()
+                        );
         }
 
         // 8. Validar coordenadas do destino
