@@ -3,6 +3,8 @@ package com.bevans.controller;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
+import java.util.Objects;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -107,19 +109,68 @@ listarPassageiros() {
                 .orElse(ResponseEntity.status(404).build());
     }
 
-    @Operation(summary = "Cadastrar Usuário", description = "Cria um novo registro.")
+    @Operation(summary = "Cadastrar Usuário autenticado no Firebase")
     @PostMapping("/cadastrar")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> cadastrar(@RequestBody Usuario novoUsuario) {
-        try {
-            Usuario usuarioSalvo = usuarioService.cadastrarUsuario(novoUsuario);
-            return ResponseEntity.ok(usuarioSalvo);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of("message", e.getMessage()));
+    public ResponseEntity<?> cadastrar(
+            @RequestBody Map<String, Object> payload,
+            HttpServletRequest request
+    ) {
+        String uid = access.uid();
+        String firebaseEmail = (String) request.getAttribute("firebaseEmail");
+        String uidInformado = valor(payload, "firebaseUid");
+        String emailInformado = valor(payload, "email");
+        String tipo = valor(payload, "tipo").toUpperCase(java.util.Locale.ROOT);
+
+        if (uid == null || firebaseEmail == null
+                || !Objects.equals(uid, uidInformado)
+                || !firebaseEmail.equalsIgnoreCase(emailInformado)) {
+            return ResponseEntity.status(403).body(
+                    Map.of("erro", "Dados não correspondem ao token Firebase."));
         }
+
+        if (!"PASSAGEIRO".equals(tipo) && !"MOTORISTA".equals(tipo)) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("erro", "Tipo de usuário inválido."));
+        }
+
+        // A autorização de motorista deve vir do servidor.
+        // Um código presente no aplicativo não é uma credencial segura.
+        if ("MOTORISTA".equals(tipo)) {
+            String codigoServidor = System.getenv("MOTORISTA_CADASTRO_CODIGO");
+            String codigoRecebido = valor(payload, "codigoAcesso");
+            if (codigoServidor == null || codigoServidor.isBlank()
+                    || !codigoServidor.equals(codigoRecebido)) {
+                return ResponseEntity.status(403).body(
+                        Map.of("erro", "Cadastro de motorista não autorizado."));
+            }
+        }
+
+        if (usuarioRepository.findByFirebaseUid(uid).isPresent()) {
+            return ResponseEntity.status(409).body(
+                    Map.of("erro", "Identidade Firebase já cadastrada."));
+        }
+
+        Usuario novoUsuario = new Usuario();
+        novoUsuario.setNome(valor(payload, "nome"));
+        novoUsuario.setEmail(firebaseEmail);
+        novoUsuario.setFirebaseUid(uid);
+        novoUsuario.setTelefone(valor(payload, "telefone"));
+        novoUsuario.setTipo(tipo);
+        novoUsuario.setEnderecoCompleto("Endereço Pendente");
+        novoUsuario.setLatitude(0.0);
+        novoUsuario.setLongitude(0.0);
+
+        if (novoUsuario.getNome().isBlank() || novoUsuario.getTelefone().isBlank()) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("erro", "Nome e telefone são obrigatórios."));
+        }
+        return ResponseEntity.ok(usuarioService.cadastrarUsuario(novoUsuario));
+    }
+
+    private String valor(Map<String, Object> dados, String chave) {
+        if (dados == null || dados.get(chave) == null) return "";
+        return dados.get(chave).toString().trim();
     }
 
     @Operation(summary = "Atualizar Endereço", description = "Atualiza latitude, longitude e endereço completo do passageiro.")
