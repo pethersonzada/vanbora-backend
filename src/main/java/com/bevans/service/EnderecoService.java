@@ -1,5 +1,7 @@
 package com.bevans.service;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import org.springframework.stereotype.Service;
 import com.bevans.model.Endereco;
@@ -38,6 +40,7 @@ public class EnderecoService {
         return enderecoRepository.findByUsuarioId(usuarioId);
     }
 
+    @Transactional
     public Endereco atualizarEndereco(Long id, Endereco enderecoRequest) {
         Endereco endereco = enderecoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Endereço não encontrado"));
@@ -54,6 +57,29 @@ public class EnderecoService {
         if (enderecoRequest.getBairro() != null) {
             endereco.setBairro(enderecoRequest.getBairro());
         }
+
+
+if (enderecoRequest.getLatitude() != null
+        || enderecoRequest.getLongitude() != null) {
+
+    Double latitude = enderecoRequest.getLatitude();
+    Double longitude = enderecoRequest.getLongitude();
+
+    if (latitude == null || longitude == null
+            || !Double.isFinite(latitude)
+            || !Double.isFinite(longitude)
+            || latitude < -90 || latitude > 90
+            || longitude < -180 || longitude > 180
+            || (latitude == 0.0 && longitude == 0.0)) {
+        throw new IllegalArgumentException(
+                "Coordenadas do endereço inválidas."
+        );
+    }
+
+    endereco.setLatitude(latitude);
+    endereco.setLongitude(longitude);
+}
+
 
         return enderecoRepository.save(endereco);
     }
