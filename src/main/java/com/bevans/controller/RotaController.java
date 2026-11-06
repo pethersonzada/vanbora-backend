@@ -351,7 +351,7 @@ public class RotaController {
 
     @Operation(summary = "Iniciar Rota")
     @PostMapping("/iniciar")
-    @PreAuthorize("@access.driverOfTurma(T(java.lang.Long).valueOf(#p0['turmaId'].toString()))")
+    @PreAuthorize("@access.canStartRota(#p0)")
     public ResponseEntity<Object> iniciarRota(
             @RequestBody Map<String, Object> payload
     ) {
