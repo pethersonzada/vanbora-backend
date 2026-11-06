@@ -33,8 +33,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(
-    name = "2. Gestão de Rotas",
-    description = "Presenças e otimização logística"
+        name = "2. Gestão de Rotas",
+        description = "Presenças e otimização logística"
 )
 @RestController
 @RequestMapping("/rota")
@@ -92,7 +92,9 @@ public class RotaController {
     }
 
     private boolean coordenadasValidas(Endereco endereco) {
-        if (endereco == null) return false;
+        if (endereco == null) {
+            return false;
+        }
 
         Double latitude = endereco.getLatitude();
         Double longitude = endereco.getLongitude();
@@ -140,8 +142,8 @@ public class RotaController {
 
     @Operation(summary = "Confirmar presença por turma")
     @CacheEvict(
-        value = "rotasOtimizadas",
-        allEntries = true
+            value = "rotasOtimizadas",
+            allEntries = true
     )
     @PostMapping("/confirmar")
     @Transactional
@@ -149,18 +151,15 @@ public class RotaController {
             @RequestParam Long usuarioId,
             @RequestParam Long turmaId,
             @RequestParam String status,
-            @RequestParam(required = false)
-            Long enderecoIda,
-            @RequestParam(required = false)
-            Long enderecoVolta
+            @RequestParam(required = false) Long enderecoIda,
+            @RequestParam(required = false) Long enderecoVolta
     ) {
-        if (status == null) {
+        if (status == null || status.isBlank()) {
             return ResponseEntity.badRequest()
                     .body("Informe o status.");
         }
 
-        String novoStatus =
-                status.trim().toUpperCase();
+        String novoStatus = status.trim().toUpperCase();
 
         if (!Set.of(
                 "IDA",
@@ -258,7 +257,7 @@ public class RotaController {
         presenca.setEnderecoIda(ida);
         presenca.setEnderecoVolta(volta);
 
-        // Compatibilidade com o campo legado.
+        // Mantém compatibilidade com consumidores antigos.
         presenca.setEndereco(
                 ida != null ? ida : volta
         );
@@ -271,10 +270,11 @@ public class RotaController {
     private Map<String, Object> resumirEndereco(
             Endereco endereco
     ) {
-        if (endereco == null) return null;
+        if (endereco == null) {
+            return null;
+        }
 
-        Map<String, Object> item =
-                new LinkedHashMap<>();
+        Map<String, Object> item = new LinkedHashMap<>();
 
         item.put("id", endereco.getId());
         item.put("apelido", endereco.getApelido());
@@ -285,19 +285,14 @@ public class RotaController {
         return item;
     }
 
-    @Operation(
-        summary = "Consultar minha confirmação na turma"
-    )
+    @Operation(summary = "Consultar minha confirmação na turma")
     @GetMapping("/minha-confirmacao")
     @Transactional(readOnly = true)
-    public ResponseEntity<Map<String, Object>>
-    minhaConfirmacao(
+    public ResponseEntity<Map<String, Object>> minhaConfirmacao(
             @RequestParam Long usuarioId,
             @RequestParam Long turmaId
     ) {
-        if (!passageiroAprovado(
-                usuarioId, turmaId
-        )) {
+        if (!passageiroAprovado(usuarioId, turmaId)) {
             return ResponseEntity.status(403).build();
         }
 
@@ -309,8 +304,7 @@ public class RotaController {
                 )
                 .orElse(null);
 
-        Map<String, Object> resultado =
-                new HashMap<>();
+        Map<String, Object> resultado = new HashMap<>();
 
         if (presenca == null) {
             resultado.put("status", "");
@@ -325,7 +319,7 @@ public class RotaController {
         Endereco ida = presenca.getEnderecoIda();
         Endereco volta = presenca.getEnderecoVolta();
 
-        // Compatibilidade com registros antigos.
+        // Compatibilidade com presenças antigas.
         if (ida == null
                 && ("IDA".equals(status)
                 || "AMBOS".equals(status))) {
@@ -377,8 +371,8 @@ public class RotaController {
 
         return ResponseEntity.ok(
                 Map.of(
-                    "mensagem",
-                    "Rota iniciada com sucesso."
+                        "mensagem",
+                        "Rota iniciada com sucesso."
                 )
         );
     }
@@ -410,24 +404,41 @@ public class RotaController {
 
     @Operation(summary = "Otimizar Rota")
     @GetMapping("/otimizar")
-    public CompletableFuture<ResponseEntity<
-            List<PassageiroRotaDTO>>>
+    public CompletableFuture<ResponseEntity<List<PassageiroRotaDTO>>>
     otimizarRota(
-            @RequestParam String sentido,
-            @RequestParam Long turmaId
+            @RequestParam(required = false) String sentido,
+            @RequestParam(required = false) Long turmaId
     ) {
-        return rotaService.otimizarRota(
-                sentido, turmaId
-        ).thenApply(ResponseEntity::ok)
-        .exceptionally(ex -> {
-            Throwable cause = ex.getCause() != null
-                    ? ex.getCause()
-                    : ex;
-
-            throw new RuntimeException(
-                    cause.getMessage(), cause
+        // Impede que parâmetros ausentes cheguem ao serviço.
+        if (sentido == null || sentido.isBlank()
+                || turmaId == null) {
+            return CompletableFuture.completedFuture(
+                    ResponseEntity.badRequest().build()
             );
-        });
+        }
+
+        String sentidoNormalizado =
+                sentido.trim().toUpperCase();
+
+        if (!sentidoNormalizado.equals("IDA")
+                && !sentidoNormalizado.equals("VOLTA")) {
+            return CompletableFuture.completedFuture(
+                    ResponseEntity.badRequest().build()
+            );
+        }
+
+        // Turma inexistente é 404, não 400.
+        if (!turmaRepository.existsById(turmaId)) {
+            return CompletableFuture.completedFuture(
+                    ResponseEntity.notFound().build()
+            );
+        }
+
+        // Exceções inesperadas seguem para o tratamento global.
+        return rotaService.otimizarRota(
+                sentidoNormalizado,
+                turmaId
+        ).thenApply(ResponseEntity::ok);
     }
 
     @Operation(summary = "Atualizar Localização da Van")
