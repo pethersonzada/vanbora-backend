@@ -5,6 +5,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import java.util.Objects;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -40,6 +41,9 @@ public class UsuarioController {
     private final PresencaRepository presencaRepository;
     private final UsuarioService usuarioService;
     private final AccessPolicy access;
+
+    @Value("${MOTORISTA_CADASTRO_CODIGO:}")
+    private String codigoMotoristaServidor;
 
     public UsuarioController(UsuarioRepository usuarioRepository, PresencaRepository presencaRepository, UsuarioService usuarioService, AccessPolicy access) {
         this.usuarioRepository = usuarioRepository;
@@ -137,7 +141,7 @@ listarPassageiros() {
         // A autorização de motorista deve vir do servidor.
         // Um código presente no aplicativo não é uma credencial segura.
         if ("MOTORISTA".equals(tipo)) {
-            String codigoServidor = System.getenv("MOTORISTA_CADASTRO_CODIGO");
+            String codigoServidor = codigoMotoristaServidor;
             String codigoRecebido = valor(payload, "codigoAcesso");
             if (codigoServidor == null || codigoServidor.isBlank()
                     || !codigoServidor.equals(codigoRecebido)) {
