@@ -1,6 +1,8 @@
 
 package com.bevans.controller;
 
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -147,6 +149,7 @@ public class RotaController {
     )
     @PostMapping("/confirmar")
     @Transactional
+    @PreAuthorize("@access.own(#p0)")
     public ResponseEntity<String> confirmarPresenca(
             @RequestParam Long usuarioId,
             @RequestParam Long turmaId,
@@ -288,6 +291,7 @@ public class RotaController {
     @Operation(summary = "Consultar minha confirmação na turma")
     @GetMapping("/minha-confirmacao")
     @Transactional(readOnly = true)
+    @PreAuthorize("@access.own(#p0)")
     public ResponseEntity<Map<String, Object>> minhaConfirmacao(
             @RequestParam Long usuarioId,
             @RequestParam Long turmaId
@@ -347,6 +351,7 @@ public class RotaController {
 
     @Operation(summary = "Iniciar Rota")
     @PostMapping("/iniciar")
+    @PreAuthorize("@access.driverOfTurma(T(java.lang.Long).valueOf(#p0['turmaId'].toString()))")
     public ResponseEntity<Object> iniciarRota(
             @RequestBody Map<String, Object> payload
     ) {
@@ -379,6 +384,7 @@ public class RotaController {
 
     @Operation(summary = "Encerrar Rota")
     @PostMapping("/encerrar")
+    @PreAuthorize("@access.driverOfTurma(#p0)")
     public ResponseEntity<String> encerrarRota(
             @RequestParam Long turmaId
     ) {
@@ -394,6 +400,7 @@ public class RotaController {
 
     @Operation(summary = "Status Atual")
     @GetMapping("/status-atual")
+    @PreAuthorize("@access.canReadTurma(#p0)")
     public ResponseEntity<Object> getStatusAtual(
             @RequestParam Long turmaId
     ) {
@@ -404,6 +411,7 @@ public class RotaController {
 
     @Operation(summary = "Otimizar Rota")
     @GetMapping("/otimizar")
+    @PreAuthorize("@access.driverOfTurma(#p1)")
     public CompletableFuture<ResponseEntity<List<PassageiroRotaDTO>>>
     otimizarRota(
             @RequestParam(required = false) String sentido,
@@ -443,6 +451,7 @@ public class RotaController {
 
     @Operation(summary = "Atualizar Localização da Van")
     @PostMapping("/localizacao-van")
+    @PreAuthorize("@access.driverOfTurma(#p0)")
     public ResponseEntity<String> atualizarLocalizacaoVan(
             @RequestParam Long turmaId,
             @RequestParam Double latitude,
@@ -468,6 +477,7 @@ public class RotaController {
 
     @Operation(summary = "Buscar Localização da Van")
     @GetMapping("/localizacao-van")
+    @PreAuthorize("@access.canReadTurma(#p0)")
     public ResponseEntity<Object> obterLocalizacaoVan(
             @RequestParam Long turmaId
     ) {
