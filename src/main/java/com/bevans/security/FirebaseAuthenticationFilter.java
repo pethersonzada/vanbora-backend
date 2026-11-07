@@ -15,27 +15,48 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
+
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain chain
+    ) throws ServletException, IOException {
+
         String header = request.getHeader("Authorization");
+
         if (header != null) {
             if (!header.startsWith("Bearer ") || header.substring(7).isBlank()) {
                 unauthorized(response);
                 return;
             }
+
             try {
-                FirebaseToken token = FirebaseAuth.getInstance().verifyIdToken(header.substring(7));
+                FirebaseToken token = FirebaseAuth.getInstance()
+                        .verifyIdToken(header.substring(7));
+
                 UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(token.getUid(), null, List.of());
+                        new UsernamePasswordAuthenticationToken(
+                                token.getUid(),
+                                null,
+                                List.of()
+                        );
+
                 SecurityContextHolder.getContext().setAuthentication(auth);
                 request.setAttribute("firebaseEmail", token.getEmail());
+
             } catch (Exception e) {
                 SecurityContextHolder.clearContext();
                 unauthorized(response);
                 return;
             }
         }
+
         try {
             chain.doFilter(request, response);
         } finally {
@@ -46,6 +67,8 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
     private void unauthorized(HttpServletResponse response) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write("{\"erro\":\"Token Firebase ausente, inválido ou expirado.\"}");
+        response.getWriter().write(
+                "{\"erro\":\"Token Firebase ausente, inválido ou expirado.\"}"
+        );
     }
 }
