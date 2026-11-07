@@ -37,13 +37,9 @@ public class Turma {
     @JoinColumn(name = "motorista_id")
     private Usuario motorista;
 
-    @OneToMany(
-            mappedBy = "turma",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
-    @JsonIgnore
-    private List<AlunoTurma> alunoTurmas;
+    @OneToMany(mappedBy = "turma")
+@JsonIgnore
+private List<AlunoTurma> alunoTurmas;
 
     public Long getId() {
         return id;
