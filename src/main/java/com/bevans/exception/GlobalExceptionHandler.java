@@ -110,6 +110,18 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(TurmaComRotaAtivaException.class)
+    public ResponseEntity<Object> turmaComRotaAtiva(
+            TurmaComRotaAtivaException ex,
+            WebRequest request
+    ) {
+        return resposta(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                request
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> erroInterno(
             Exception ex,

@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bevans.exception.TurmaComRotaAtivaException;
 import com.bevans.model.AlunoTurma;
 import com.bevans.model.Turma;
 import com.bevans.model.Usuario;
@@ -537,20 +538,18 @@ public class TurmaService {
                         )
                 );
 
-        // Não permitir a exclusão enquanto houver
-        // viagem ativa nesta turma.
+        // Impede excluir uma turma com viagem ativa.
         viagemRepository.findFirstByTurmaIdAndStatus(
                 turmaId,
                 "EM_ANDAMENTO"
         ).ifPresent(viagem -> {
-            throw new IllegalStateException(
+            throw new TurmaComRotaAtivaException(
                     "Não é possível excluir uma turma "
                     + "com rota em andamento."
             );
         });
 
-        // Soft delete: mantém viagens, presenças
-        // e vínculos históricos no banco.
+        // Exclusão lógica, preservando histórico.
         turmaRepository.delete(turma);
     }
 }
