@@ -6,11 +6,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.bevans.model.AlunoTurma;
 import com.bevans.model.Turma;
 import com.bevans.model.Usuario;
-import com.bevans.model.Viagem;
 import com.bevans.repository.AlunoTurmaRepository;
 import com.bevans.repository.TurmaRepository;
 import com.bevans.repository.UsuarioRepository;
@@ -153,6 +153,7 @@ public class TurmaService {
 
         if (!"MOTORISTA".equalsIgnoreCase(
                 motorista.getTipo())) {
+
             throw new IllegalArgumentException(
                     "O usuário informado não é motorista."
             );
@@ -298,6 +299,7 @@ public class TurmaService {
                 .stream()
                 .map(AlunoTurma::getTurma)
                 .filter(turma -> turma != null)
+                .filter(turma -> !turma.isExcluido())
                 .distinct()
                 .toList();
     }
@@ -525,6 +527,7 @@ public class TurmaService {
         return turmaRepository.save(turma);
     }
 
+    @Transactional
     public void deletarTurma(Long turmaId) {
         Turma turma = turmaRepository
                 .findById(turmaId)
@@ -534,40 +537,20 @@ public class TurmaService {
                         )
                 );
 
-        List<AlunoTurma> todosVinculos =
-                alunoTurmaRepository.findAll()
-                        .stream()
-                        .filter(v ->
-                                v.getTurma() != null
-                                && v.getTurma()
-                                        .getId()
-                                        .equals(turmaId)
-                        )
-                        .toList();
-
-        if (!todosVinculos.isEmpty()) {
-            alunoTurmaRepository.deleteAll(
-                    todosVinculos
+        // Não permitir a exclusão enquanto houver
+        // viagem ativa nesta turma.
+        viagemRepository.findFirstByTurmaIdAndStatus(
+                turmaId,
+                "EM_ANDAMENTO"
+        ).ifPresent(viagem -> {
+            throw new IllegalStateException(
+                    "Não é possível excluir uma turma "
+                    + "com rota em andamento."
             );
-        }
+        });
 
-        List<Viagem> viagensDaTurma =
-                viagemRepository.findAll()
-                        .stream()
-                        .filter(v ->
-                                v.getTurma() != null
-                                && v.getTurma()
-                                        .getId()
-                                        .equals(turmaId)
-                        )
-                        .toList();
-
-        if (!viagensDaTurma.isEmpty()) {
-            viagemRepository.deleteAll(
-                    viagensDaTurma
-            );
-        }
-
+        // Soft delete: mantém viagens, presenças
+        // e vínculos históricos no banco.
         turmaRepository.delete(turma);
     }
 }

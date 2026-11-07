@@ -1,13 +1,19 @@
+
 package com.bevans.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.List;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
 @Entity
 @Table(name = "turmas")
+@SQLDelete(sql = "UPDATE turmas SET excluido = true WHERE id = ?")
+@SQLRestriction("excluido = false")
 public class Turma {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -24,47 +30,124 @@ public class Turma {
     private Double origemLatitude;
     private Double origemLongitude;
 
+    @Column(nullable = false)
+    private boolean excluido = false;
+
     @ManyToOne
     @JoinColumn(name = "motorista_id")
     private Usuario motorista;
 
-    @OneToMany(mappedBy = "turma", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(
+            mappedBy = "turma",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     @JsonIgnore
     private List<AlunoTurma> alunoTurmas;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getTurno() { return turno; }
-    public void setTurno(String turno) { this.turno = turno; }
+    public String getNome() {
+        return nome;
+    }
 
-    public String getCodigoConvite() { return codigoConvite; }
-    public void setCodigoConvite(String codigoConvite) { this.codigoConvite = codigoConvite; }
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
 
-    public String getDestinoNome() { return destinoNome; }
-    public void setDestinoNome(String destinoNome) { this.destinoNome = destinoNome; }
+    public String getTurno() {
+        return turno;
+    }
 
-    public Double getDestinoLatitude() { return destinoLatitude; }
-    public void setDestinoLatitude(Double destinoLatitude) { this.destinoLatitude = destinoLatitude; }
+    public void setTurno(String turno) {
+        this.turno = turno;
+    }
 
-    public Double getDestinoLongitude() { return destinoLongitude; }
-    public void setDestinoLongitude(Double destinoLongitude) { this.destinoLongitude = destinoLongitude; }
+    public String getCodigoConvite() {
+        return codigoConvite;
+    }
 
-    public String getOrigemNome() { return origemNome; }
-    public void setOrigemNome(String origemNome) { this.origemNome = origemNome; }
+    public void setCodigoConvite(String codigoConvite) {
+        this.codigoConvite = codigoConvite;
+    }
 
-    public Double getOrigemLatitude() { return origemLatitude; }
-    public void setOrigemLatitude(Double origemLatitude) { this.origemLatitude = origemLatitude; }
+    public String getDestinoNome() {
+        return destinoNome;
+    }
 
-    public Double getOrigemLongitude() { return origemLongitude; }
-    public void setOrigemLongitude(Double origemLongitude) { this.origemLongitude = origemLongitude; }
+    public void setDestinoNome(String destinoNome) {
+        this.destinoNome = destinoNome;
+    }
 
-    public Usuario getMotorista() { return motorista; }
-    public void setMotorista(Usuario motorista) { this.motorista = motorista; }
+    public Double getDestinoLatitude() {
+        return destinoLatitude;
+    }
 
-    public List<AlunoTurma> getAlunoTurmas() { return alunoTurmas; }
-    public void setAlunoTurmas(List<AlunoTurma> alunoTurmas) { this.alunoTurmas = alunoTurmas; }
+    public void setDestinoLatitude(Double destinoLatitude) {
+        this.destinoLatitude = destinoLatitude;
+    }
+
+    public Double getDestinoLongitude() {
+        return destinoLongitude;
+    }
+
+    public void setDestinoLongitude(Double destinoLongitude) {
+        this.destinoLongitude = destinoLongitude;
+    }
+
+    public String getOrigemNome() {
+        return origemNome;
+    }
+
+    public void setOrigemNome(String origemNome) {
+        this.origemNome = origemNome;
+    }
+
+    public Double getOrigemLatitude() {
+        return origemLatitude;
+    }
+
+    public void setOrigemLatitude(Double origemLatitude) {
+        this.origemLatitude = origemLatitude;
+    }
+
+    public Double getOrigemLongitude() {
+        return origemLongitude;
+    }
+
+    public void setOrigemLongitude(Double origemLongitude) {
+        this.origemLongitude = origemLongitude;
+    }
+
+    public Usuario getMotorista() {
+        return motorista;
+    }
+
+    public void setMotorista(Usuario motorista) {
+        this.motorista = motorista;
+    }
+
+    public List<AlunoTurma> getAlunoTurmas() {
+        return alunoTurmas;
+    }
+
+    public void setAlunoTurmas(
+            List<AlunoTurma> alunoTurmas
+    ) {
+        this.alunoTurmas = alunoTurmas;
+    }
+
+    public boolean isExcluido() {
+        return excluido;
+    }
+
+    public void setExcluido(boolean excluido) {
+        this.excluido = excluido;
+    }
 }
