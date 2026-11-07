@@ -6,41 +6,46 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.util.ArrayList;
-
 @Component
 public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
-
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-        
-        String authHeader = request.getHeader("Authorization");
-
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain chain) throws ServletException, IOException {
+        String header = request.getHeader("Authorization");
+        if (header != null) {
+            if (!header.startsWith("Bearer ") || header.substring(7).isBlank()) {
+                unauthorized(response);
+                return;
+            }
             try {
-                FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
-                String uid = decodedToken.getUid();
-                
-                UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(uid, null, new ArrayList<>());
-                
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                FirebaseToken token = FirebaseAuth.getInstance().verifyIdToken(header.substring(7));
+                UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(token.getUid(), null, List.of());
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                request.setAttribute("firebaseEmail", token.getEmail());
             } catch (Exception e) {
                 SecurityContextHolder.clearContext();
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                response.getWriter().write("Acesso negado: Token invalido ou expirado.");
+                unauthorized(response);
                 return;
             }
         }
-        
-        filterChain.doFilter(request, response);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private void unauthorized(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"erro\":\"Token Firebase ausente, inválido ou expirado.\"}");
     }
 }

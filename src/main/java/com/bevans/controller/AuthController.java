@@ -2,63 +2,56 @@ package com.bevans.controller;
 
 import java.util.HashMap;
 import java.util.Map;
-
+import java.util.Objects;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseToken;
 import com.bevans.model.Usuario;
 import com.bevans.repository.UsuarioRepository;
-
+import com.bevans.security.AccessPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "4. Autenticação", description = "Segurança e acesso ao sistema")
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
+    private final UsuarioRepository usuarios;
+    private final AccessPolicy access;
 
-    private final UsuarioRepository usuarioRepository;
-
-    public AuthController(UsuarioRepository usuarioRepository) {
-        this.usuarioRepository = usuarioRepository;
+    public AuthController(UsuarioRepository usuarios, AccessPolicy access) {
+        this.usuarios = usuarios;
+        this.access = access;
     }
 
-    @Operation(summary = "Login/Sincronização com Firebase", description = "Valida o token JWT do Firebase, identifica o utilizador pelo E-mail e retorna os dados de perfil.")
+    @Operation(summary = "Login vinculado à identidade Firebase verificada")
     @PostMapping("/login")
-    public ResponseEntity<Object> login(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody Map<String, String> payload) throws Exception {
-        
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new IllegalArgumentException("Token de autenticação ausente ou mal formatado.");
+    public ResponseEntity<Object> login(@RequestBody Map<String, String> payload,
+                                        HttpServletRequest request) {
+        String uid = access.uid();
+        String emailToken = (String) request.getAttribute("firebaseEmail");
+        String emailInformado = payload == null ? null : payload.get("email");
+        if (uid == null || emailToken == null || emailInformado == null
+                || !emailToken.equalsIgnoreCase(emailInformado.trim())) {
+            return ResponseEntity.status(403).body(Map.of("erro", "Identidade não corresponde ao token Firebase."));
         }
 
-        String email = payload.get("email");
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("O E-mail é obrigatório para vincular o utilizador.");
+        Usuario usuario = usuarios.findByEmail(emailToken)
+                .orElseThrow(() -> new IllegalArgumentException("Perfil não encontrado."));
+        if (usuario.getFirebaseUid() != null
+                && !Objects.equals(usuario.getFirebaseUid(), uid)) {
+            return ResponseEntity.status(403).body(Map.of("erro", "Perfil pertence a outra identidade."));
         }
-
-        String idToken = authHeader.substring(7);
-        FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-        String uid = decodedToken.getUid();
-
-        Usuario u = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com este e-mail."));
-        
-        if (u.getFirebaseUid() == null || !u.getFirebaseUid().equals(uid)) {
-            u.setFirebaseUid(uid);
-            usuarioRepository.save(u);
+        if (usuario.getFirebaseUid() == null) {
+            usuario.setFirebaseUid(uid);
+            usuarios.save(usuario);
         }
-
         Map<String, String> resposta = new HashMap<>();
-        resposta.put("id", u.getId().toString());
-        resposta.put("tipo", u.getTipo());
-        resposta.put("nome", u.getNome() != null ? u.getNome() : "");
-        resposta.put("endereco", u.getEnderecoCompleto() != null ? u.getEnderecoCompleto() : "");
-        
+        resposta.put("id", usuario.getId().toString());
+        resposta.put("tipo", usuario.getTipo());
+        resposta.put("nome", usuario.getNome() == null ? "" : usuario.getNome());
+        resposta.put("endereco", usuario.getEnderecoCompleto() == null
+                ? "" : usuario.getEnderecoCompleto());
         return ResponseEntity.ok(resposta);
     }
 }
